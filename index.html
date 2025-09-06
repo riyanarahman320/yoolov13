@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulasi: Bandung Cerdas Bergerak v5.3 (Logika Natural)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(170deg, #e0eafc 0%, #cfdef3 100%);
+            overflow-x: hidden;
+        }
+        #simulation-container {
+            transform-origin: center center;
+            transition: transform 0.3s ease-in-out;
+        }
+        .road { background-color: #6c757d; position: absolute; z-index: 1; }
+        .road-h { width: 100%; height: 280px; top: 50%; transform: translateY(-50%); }
+        .road-v { height: 100%; width: 280px; left: 50%; transform: translateX(-50%); }
+        
+        .intersection-center {
+            position: absolute;
+            width: 280px; height: 280px;
+            background-color: #6c757d;
+            z-index: 2;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .traffic-light {
+            position: absolute;
+            background-color: #343a40;
+            padding: 6px;
+            border-radius: 10px;
+            display: flex;
+            gap: 5px;
+            z-index: 10;
+            border: 2px solid #495057;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .light {
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            background-color: #495057;
+            transition: all 0.3s;
+        }
+        .light.red { background-color: #dc3545; box-shadow: 0 0 15px #dc3545; }
+        .light.yellow { background-color: #ffc107; box-shadow: 0 0 15px #ffc107; }
+        .light.green { background-color: #28a745; box-shadow: 0 0 15px #28a745; }
+        .light.active { opacity: 1; }
+        .light:not(.active) { opacity: 0.2; box-shadow: none; }
+
+        .car {
+            position: absolute;
+            width: 28px; height: 45px;
+            border-radius: 8px 8px 4px 4px;
+            z-index: 5;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            border: 1px solid rgba(0,0,0,0.2);
+            background-image: linear-gradient(to top, var(--car-color-dark), var(--car-color-light));
+            left: 0; top: 0; 
+        }
+        .car::before { /* Windshield */
+            content: '';
+            position: absolute;
+            top: 5px; left: 4px;
+            width: 20px; height: 12px;
+            background: linear-gradient(45deg, #adb5bd, #e9ecef);
+            border-radius: 4px 4px 2px 2px;
+        }
+
+        #light-n { top: calc(50% - 140px - 40px); left: calc(50% + 10px); }
+        #light-s { bottom: calc(50% - 140px - 40px); left: calc(50% - 40px); transform: rotate(180deg); }
+        #light-e { top: calc(50% - 40px); left: calc(50% + 140px + 10px); transform: rotate(90deg); }
+        #light-w { top: calc(50% + 10px); right: calc(50% + 140px + 10px); transform: rotate(-90deg); }
+
+        .cctv-feed {
+            background: #000;
+            border: 2px solid #4a5568;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        .cctv-feed canvas { width: 100%; height: 100%; }
+        .cctv-overlay {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            padding: 4px 8px; color: white;
+            font-size: 12px; font-weight: bold;
+            background: rgba(0,0,0,0.6);
+            text-align: center;
+        }
+        .cctv-overlay .rec { color: #dc3545; margin-right: 4px; animation: blink-rec 1.5s infinite; }
+        @keyframes blink-rec { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .media-input-label {
+            cursor: pointer;
+            padding: 8px 12px;
+            background-color: #4a90e2;
+            color: white;
+            border-radius: 5px;
+            display: inline-block;
+            text-align: center;
+            font-size: 12px;
+        }
+        .media-input-label:hover { background-color: #357abd; }
+        .media-input { display: none; }
+        .media-preview-container {
+            width: 300px;
+            height: 168px;
+            margin-left: auto;
+            margin-right: auto;
+            margin-bottom: 0.5rem;
+            background-color: #000;
+            border-radius: 0.25rem;
+            position: relative;
+        }
+        .media-preview-container > * {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="min-h-screen flex flex-col items-center justify-center p-4">
+        <!-- Header -->
+        <div class="text-center mb-4">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-gray-800">Bandung Cerdas Bergerak</h1>
+            <p class="text-lg md:text-xl text-gray-600 mt-1">Simulasi Lalu Lintas & Deteksi Kendaraan (YOLO API)</p>
+        </div>
+
+        <!-- Simulation Area -->
+        <div id="viewport" class="relative w-full max-w-xl aspect-square bg-green-100 rounded-2xl shadow-2xl overflow-hidden border-8 border-white">
+            <div id="simulation-container" class="relative w-full h-full">
+                <div class="road road-h"></div>
+                <div class="road road-v"></div>
+                <div class="intersection-center"></div>
+                <div id="light-n" class="traffic-light"><div class="light red"></div><div class="light yellow"></div><div class="light green"></div></div>
+                <div id="light-s" class="traffic-light"><div class="light red"></div><div class="light yellow"></div><div class="light green"></div></div>
+                <div id="light-w" class="traffic-light"><div class="light red"></div><div class="light yellow"></div><div class="light green"></div></div>
+                <div id="light-e" class="traffic-light"><div class="light red"></div><div class="light yellow"></div><div class="light green"></div></div>
+                <div id="car-container"></div>
+            </div>
+             <!-- Zoom Controls -->
+            <div id="zoom-controls" class="absolute top-4 right-4 z-20 flex flex-col items-center gap-2">
+                <button id="zoom-in-btn" class="w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full shadow-lg text-gray-700 hover:bg-white text-xl font-bold transition-all flex items-center justify-center">+</button>
+                <span id="zoom-display" class="w-12 h-10 bg-white/80 backdrop-blur-sm rounded-lg shadow-lg text-gray-700 flex items-center justify-center text-xs font-bold">100%</span>
+                <button id="zoom-out-btn" class="w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full shadow-lg text-gray-700 hover:bg-white text-xl font-bold transition-all flex items-center justify-center">-</button>
+            </div>
+        </div>
+        
+        <div class="w-full max-w-7xl mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left Column: Dashboards -->
+            <div class="lg:col-span-2 flex flex-col gap-6">
+                <!-- Dashboard -->
+                <div class="w-full p-5 bg-white rounded-xl shadow-lg">
+                    <h2 class="text-xl font-bold mb-4 text-center text-gray-700">Dasbor Kontrol AI</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                        <div><h3 class="font-semibold text-gray-500"><i class="fas fa-traffic-light mr-1"></i>Status Lampu</h3><p id="status-text" class="text-2xl font-bold">-</p></div>
+                        <div><h3 class="font-semibold text-gray-500"><i class="fas fa-arrows-alt-v mr-1"></i>Kepadatan U-S</h3><p id="ns-count" class="text-2xl font-bold">0</p></div>
+                        <div><h3 class="font-semibold text-gray-500"><i class="fas fa-arrows-alt-h mr-1"></i>Kepadatan B-T</h3><p id="we-count" class="text-2xl font-bold">0</p></div>
+                    </div>
+                    <div class="mt-4 text-center border-t pt-3">
+                        <p id="ai-decision" class="text-sm text-gray-500 italic">AI sedang menganalisis data real-time...</p>
+                    </div>
+                </div>
+
+                <!-- Vehicle Counting Section -->
+                <div class="w-full p-5 bg-white rounded-xl shadow-lg">
+                    <h2 class="text-xl font-bold mb-3 text-center text-gray-700">Hitung Kendaraan dari Media (via YOLO API)</h2>
+                    <!-- PERUBAHAN 2: Teks status diperbarui -->
+                    <p id="model-status" class="text-center text-sm text-green-600 mb-4 break-all px-4"><i class="fas fa-server"></i> Menunggu koneksi ke server YOLO di `https://5c722e5c21d5.ngrok-free.app`</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- North -->
+                        <div class="text-center">
+                            <h3 class="font-semibold text-gray-600 mb-2">Utara</h3>
+                            <div class="media-preview-container">
+                                <video id="video-preview-s" loop muted playsinline class="hidden"></video>
+                                <img id="image-preview-s" class="hidden" />
+                                <canvas id="media-canvas-s" width="300" height="168"></canvas>
+                            </div>
+                            <label for="media-input-s" class="media-input-label"><i class="fas fa-upload mr-1"></i> Pilih File</label>
+                            <input type="file" id="media-input-s" accept="video/*,image/*" class="media-input" />
+                            <div class="mt-2">
+                                <span class="font-semibold">Terdeteksi:</span>
+                                <span id="vehicle-count-s" class="text-xl font-bold text-indigo-600">0</span>
+                            </div>
+                        </div>
+                         <!-- South -->
+                        <div class="text-center">
+                            <h3 class="font-semibold text-gray-600 mb-2">Selatan</h3>
+                            <div class="media-preview-container">
+                                <video id="video-preview-n" loop muted playsinline class="hidden"></video>
+                                <img id="image-preview-n" class="hidden" />
+                                <canvas id="media-canvas-n" width="300" height="168"></canvas>
+                            </div>
+                            <label for="media-input-n" class="media-input-label"><i class="fas fa-upload mr-1"></i> Pilih File</label>
+                            <input type="file" id="media-input-n" accept="video/*,image/*" class="media-input" />
+                            <div class="mt-2">
+                                <span class="font-semibold">Terdeteksi:</span>
+                                <span id="vehicle-count-n" class="text-xl font-bold text-indigo-600">0</span>
+                            </div>
+                        </div>
+                        <!-- East -->
+                        <div class="text-center">
+                            <h3 class="font-semibold text-gray-600 mb-2">Timur</h3>
+                            <div class="media-preview-container">
+                                <video id="video-preview-e" loop muted playsinline class="hidden"></video>
+                                <img id="image-preview-e" class="hidden" />
+                                <canvas id="media-canvas-e" width="300" height="168"></canvas>
+                            </div>
+                            <label for="media-input-e" class="media-input-label"><i class="fas fa-upload mr-1"></i> Pilih File</label>
+                            <input type="file" id="media-input-e" accept="video/*,image/*" class="media-input" />
+                            <div class="mt-2">
+                                <span class="font-semibold">Terdeteksi:</span>
+                                <span id="vehicle-count-e" class="text-xl font-bold text-indigo-600">0</span>
+                            </div>
+                        </div>
+                        <!-- West -->
+                        <div class="text-center">
+                            <h3 class="font-semibold text-gray-600 mb-2">Barat</h3>
+                            <div class="media-preview-container">
+                                <video id="video-preview-w" loop muted playsinline class="hidden"></video>
+                                <img id="image-preview-w" class="hidden" />
+                                <canvas id="media-canvas-w" width="300" height="168"></canvas>
+                            </div>
+                            <label for="media-input-w" class="media-input-label"><i class="fas fa-upload mr-1"></i> Pilih File</label>
+                            <input type="file" id="media-input-w" accept="video/*,image/*" class="media-input" />
+                            <div class="mt-2">
+                                <span class="font-semibold">Terdeteksi:</span>
+                                <span id="vehicle-count-w" class="text-xl font-bold text-indigo-600">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Right Column: Gemini & CCTV -->
+            <div class="flex flex-col gap-6">
+                <!-- Gemini API Feature Section -->
+                <div class="w-full p-5 bg-white rounded-xl shadow-lg text-center">
+                     <h3 class="text-xl font-bold text-blue-600 mb-3">AI Prediktif Gemini</h3>
+                     <button id="gemini-predict-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-5 rounded-lg transition-all duration-300 disabled:bg-gray-400 w-full shadow hover:shadow-lg">
+                         <i class="fas fa-star mr-2"></i>Dapatkan Analisis Prediktif
+                     </button>
+                     <div id="gemini-result-container" class="mt-3 p-3 bg-gray-50 rounded-lg text-left min-h-[100px] hidden">
+                         <p id="gemini-prediction-result" class="text-sm text-gray-700"></p>
+                     </div>
+                </div>
+                <!-- CCTV Feeds -->
+                <div class="w-full p-5 bg-white rounded-xl shadow-lg">
+                    <h2 class="text-xl font-bold mb-3 text-center text-gray-700">Pemantauan CCTV (dari Simulasi)</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="cctv-feed"><canvas id="cctv-n" width="150" height="150"></canvas><div class="cctv-overlay"><span class="rec">●</span> U: <span id="cctv-n-count">0</span></div></div>
+                        <div class="cctv-feed"><canvas id="cctv-e" width="150" height="150"></canvas><div class="cctv-overlay"><span class="rec">●</span> T: <span id="cctv-e-count">0</span></div></div>
+                        <div class="cctv-feed"><canvas id="cctv-s" width="150" height="150"></canvas><div class="cctv-overlay"><span class="rec">●</span> S: <span id="cctv-s-count">0</span></div></div>
+                        <div class="cctv-feed"><canvas id="cctv-w" width="150" height="150"></canvas><div class="cctv-overlay"><span class="rec">●</span> B: <span id="cctv-w-count">0</span></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- CONFIGURATION ---
+            const MAX_SPEED = 2.0;
+            const SAFE_DISTANCE = 90; 
+            // PERUBAHAN 1: Ganti URL localhost dengan URL ngrok Anda
+            const YOLO_API_ENDPOINT = 'https://5c722e5c21d5.ngrok-free.app/api/detect';
+            const ALL_RED_PAUSE_DURATION = 1500;
+
+            // --- DOM ELEMENTS ---
+            const container = document.getElementById('simulation-container');
+            const carContainer = document.getElementById('car-container');
+            const statusText = document.getElementById('status-text');
+            const nsCountEl = document.getElementById('ns-count');
+            const weCountEl = document.getElementById('we-count');
+            const aiDecisionEl = document.getElementById('ai-decision');
+            const geminiBtn = document.getElementById('gemini-predict-btn');
+            const geminiResultContainer = document.getElementById('gemini-result-container');
+            const geminiResultText = document.getElementById('gemini-prediction-result');
+            const modelStatusEl = document.getElementById('model-status');
+            const zoomInBtn = document.getElementById('zoom-in-btn');
+            const zoomOutBtn = document.getElementById('zoom-out-btn');
+            const zoomDisplay = document.getElementById('zoom-display');
+            
+            const lights = { n: document.querySelectorAll('#light-n .light'), s: document.querySelectorAll('#light-s .light'), w: document.querySelectorAll('#light-w .light'), e: document.querySelectorAll('#light-e .light') };
+            const cctvContexts = { n: document.getElementById('cctv-n').getContext('2d'), s: document.getElementById('cctv-s').getContext('2d'), w: document.getElementById('cctv-w').getContext('2d'), e: document.getElementById('cctv-e').getContext('2d') };
+            const cctvCounts = { n: document.getElementById('cctv-n-count'), s: document.getElementById('cctv-s-count'), w: document.getElementById('cctv-w-count'), e: document.getElementById('cctv-e-count') };
+
+            // --- STATE ---
+            let cars = [];
+            let carIdCounter = 0;
+            let currentGreenDirection = 'NS'; 
+            let isSwitching = false;
+            let zoomLevel = 1.0;
+
+            // --- AI & MEDIA DETECTION STATE ---
+            const vehicleClasses = ['car', 'motorcycle', 'bus', 'truck', 'mobil', 'motor'];
+
+            // --- CAR LOGIC ---
+            function createCar(direction, lane) {
+                const containerSize = container.offsetWidth;
+                const carWidth = 28;
+                const carHeight = 45;
+                const laneOffset = (lane === 0) ? 35 : 85;
+
+                const carEl = document.createElement('div');
+                const hue = Math.random() * 360;
+                carEl.style.setProperty('--car-color-light', `hsl(${hue}, 80%, 70%)`);
+                carEl.style.setProperty('--car-color-dark', `hsl(${hue}, 80%, 50%)`);
+                
+                const car = { id: carIdCounter++, el: carEl, direction: direction, lane: lane, x: 0, y: 0, speed: MAX_SPEED, stopped: false, color: `hsl(${hue}, 80%, 70%)`, rotation: 0 };
+                car.el.className = 'car';
+
+                switch (direction) {
+                    case 'n': car.x = containerSize / 2 + laneOffset - carWidth; car.y = containerSize + carHeight; car.rotation = 0; break; 
+                    case 's': car.x = containerSize / 2 - laneOffset; car.y = -carHeight; car.rotation = 180; break; 
+                    case 'w': car.x = containerSize + carHeight; car.y = containerSize / 2 + laneOffset - carWidth; car.rotation = -90; break;
+                    case 'e': car.x = -carHeight; car.y = containerSize / 2 - laneOffset; car.rotation = 90; break;
+                }
+                car.el.style.transform = `translate(${car.x}px, ${car.y}px) rotate(${car.rotation}deg)`;
+                cars.push(car);
+                carContainer.appendChild(car.el);
+            }
+
+            function moveCars() {
+                const containerSize = container.offsetWidth;
+                const stopLines = {
+                    n: containerSize / 2 + 140, s: containerSize / 2 - 140,
+                    w: containerSize / 2 + 140, e: containerSize / 2 - 140
+                };
+
+                cars.forEach(car => {
+                    let closestObstacle = { distance: Infinity, speed: 0 };
+                    let targetSpeed = MAX_SPEED;
+
+                    const isNS = car.direction === 'n' || car.direction === 's';
+                    const isWE = car.direction === 'w' || car.direction === 'e';
+                    const isLightRedForCar = (isNS && currentGreenDirection !== 'NS') || (isWE && currentGreenDirection !== 'WE') || currentGreenDirection === 'ALL_RED';
+
+                    if (isLightRedForCar) {
+                        let distToLight = Infinity;
+                        switch (car.direction) {
+                            case 'n': distToLight = car.y - stopLines.n; break;
+                            case 's': distToLight = stopLines.s - car.y; break;
+                            case 'w': distToLight = car.x - stopLines.w; break;
+                            case 'e': distToLight = stopLines.e - car.x; break;
+                        }
+                        if (distToLight > 0) {
+                            closestObstacle.distance = distToLight;
+                            closestObstacle.speed = 0;
+                        }
+                    }
+
+                    for (const otherCar of cars) {
+                        if (car.id === otherCar.id || car.direction !== otherCar.direction || car.lane !== otherCar.lane) continue;
+                        
+                        let distToOtherCar = Infinity;
+                        let isOtherCarInFront = false;
+                        switch (car.direction) {
+                            case 'n': isOtherCarInFront = otherCar.y < car.y; if(isOtherCarInFront) distToOtherCar = car.y - otherCar.y; break;
+                            case 's': isOtherCarInFront = otherCar.y > car.y; if(isOtherCarInFront) distToOtherCar = otherCar.y - car.y; break;
+                            case 'w': isOtherCarInFront = otherCar.x < car.x; if(isOtherCarInFront) distToOtherCar = car.x - otherCar.x; break;
+                            case 'e': isOtherCarInFront = otherCar.x > car.x; if(isOtherCarInFront) distToOtherCar = otherCar.x - car.x; break;
+                        }
+
+                        if (isOtherCarInFront && distToOtherCar < closestObstacle.distance) {
+                            closestObstacle.distance = distToOtherCar;
+                            closestObstacle.speed = otherCar.speed;
+                        }
+                    }
+
+                    if (closestObstacle.distance < SAFE_DISTANCE) {
+                        const ratio = Math.max(0, (closestObstacle.distance - car.el.offsetHeight) / (SAFE_DISTANCE - car.el.offsetHeight));
+                        targetSpeed = MAX_SPEED * ratio;
+                        if (closestObstacle.distance < SAFE_DISTANCE) {
+                                targetSpeed = Math.min(targetSpeed, closestObstacle.speed);
+                        }
+                    }
+                    
+                    const brakingFactor = (closestObstacle.speed < 0.1 && closestObstacle.distance < SAFE_DISTANCE) ? 0.3 : 0.1;
+                    car.speed += (targetSpeed - car.speed) * brakingFactor;
+                    if (car.speed < 0) car.speed = 0;
+
+
+                    switch (car.direction) {
+                        case 'n': car.y -= car.speed; break;
+                        case 's': car.y += car.speed; break;
+                        case 'w': car.x -= car.speed; break;
+                        case 'e': car.x += car.speed; break;
+                    }
+                    car.el.style.transform = `translate(${car.x}px, ${car.y}px) rotate(${car.rotation}deg)`;
+                    car.stopped = car.speed < 0.1;
+                });
+
+                cars = cars.filter(car => {
+                    if (car.y < -150 || car.y > containerSize + 150 || car.x < -150 || car.x > containerSize + 150) {
+                        car.el.remove();
+                        return false;
+                    }
+                    return true;
+                });
+            }
+            
+            // --- MEDIA DETECTION LOGIC (YOLO API) ---
+            function setupMediaDetection(dir) {
+                const input = document.getElementById(`media-input-${dir}`);
+                const videoPreview = document.getElementById(`video-preview-${dir}`);
+                const imagePreview = document.getElementById(`image-preview-${dir}`);
+                const canvas = document.getElementById(`media-canvas-${dir}`);
+                const countEl = document.getElementById(`vehicle-count-${dir}`);
+
+                input.addEventListener('change', function() {
+                    const file = this.files[0];
+                    if (!file) return;
+
+                    const fileURL = URL.createObjectURL(file);
+                    countEl.textContent = '...';
+
+                    if (file.type.startsWith('video/')) {
+                        videoPreview.src = fileURL;
+                        videoPreview.play().catch(e => console.error("Video play failed:", e));
+                    } else if (file.type.startsWith('image/')) {
+                        imagePreview.src = fileURL;
+                        imagePreview.onload = () => {
+                            detectAndDraw(imagePreview, canvas, countEl);
+                        };
+                    }
+                });
+
+                videoPreview.addEventListener('play', function() {
+                    runVideoDetectionLoop(this, canvas, countEl);
+                });
+            }
+
+            async function runVideoDetectionLoop(video, canvas, countEl) {
+                if (video.paused || video.ended) {
+                    return; 
+                }
+                
+                await detectAndDraw(video, canvas, countEl);
+                
+                requestAnimationFrame(() => runVideoDetectionLoop(video, canvas, countEl));
+            }
+
+            function detectAndDraw(mediaElement, canvas, countEl) {
+                return new Promise((resolve) => {
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = canvas.clientWidth;
+                    canvas.height = canvas.clientHeight;
+                    
+                    ctx.drawImage(mediaElement, 0, 0, canvas.width, canvas.height);
+
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = mediaElement.videoWidth || mediaElement.naturalWidth;
+                    tempCanvas.height = mediaElement.videoHeight || mediaElement.naturalHeight;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCtx.drawImage(mediaElement, 0, 0, tempCanvas.width, tempCanvas.height);
+                    
+                    tempCanvas.toBlob(async function(blob) {
+                        if (!blob) {
+                            resolve();
+                            return;
+                        }
+                        const formData = new FormData();
+                        formData.append('image', blob, 'image.jpg');
+
+                        try {
+                            const response = await fetch(YOLO_API_ENDPOINT, {
+                                method: 'POST',
+                                body: formData
+                            });
+
+                            if (!response.ok) {
+                                throw new Error(`API Error: ${response.statusText}`);
+                            }
+
+                            const predictions = await response.json();
+                            
+                            let vehicleCount = 0;
+                            predictions.forEach(prediction => {
+                                if (vehicleClasses.includes(prediction.class.toLowerCase())) {
+                                    vehicleCount++;
+                                    const bbox = prediction.bbox;
+                                    const scaleX = canvas.width / tempCanvas.width;
+                                    const scaleY = canvas.height / tempCanvas.height;
+                                    const scaledBbox = [bbox[0] * scaleX, bbox[1] * scaleY, bbox[2] * scaleX, bbox[3] * scaleY];
+
+                                    ctx.strokeStyle = '#28a745';
+                                    ctx.lineWidth = 2;
+                                    ctx.strokeRect(...scaledBbox);
+                                    
+                                    ctx.fillStyle = '#28a745';
+                                    ctx.font = '12px Inter';
+                                    const text = `${prediction.class} (${Math.round(prediction.score * 100)}%)`;
+                                    ctx.fillText(text, scaledBbox[0], scaledBbox[1] > 10 ? scaledBbox[1] - 5 : 10);
+                                }
+                            });
+                            countEl.textContent = vehicleCount;
+
+                        } catch (error) {
+                            console.error('Error calling YOLO API:', error);
+                            countEl.textContent = 'X';
+                            modelStatusEl.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Gagal terhubung ke server YOLO. Pastikan server sudah berjalan.`;
+                            modelStatusEl.className = 'text-center text-sm text-red-600 mb-4';
+                        } finally {
+                            resolve();
+                        }
+                    }, 'image/jpeg');
+                });
+            }
+
+            // --- SIMULATION & UI LOGIC ---
+            function syncSimCarsWithDetection() {
+                const videoCounts = {
+                    n: parseInt(document.getElementById('vehicle-count-n').textContent) || 0,
+                    s: parseInt(document.getElementById('vehicle-count-s').textContent) || 0,
+                    e: parseInt(document.getElementById('vehicle-count-e').textContent) || 0,
+                    w: parseInt(document.getElementById('vehicle-count-w').textContent) || 0,
+                };
+
+                for (const dir in videoCounts) {
+                    const targetCount = videoCounts[dir];
+                    let currentCount = cars.filter(c => c.direction === dir).length;
+                    
+                    if (currentCount < targetCount) {
+                        for (let i = 0; i < targetCount - currentCount; i++) {
+                            createCar(dir, Math.floor(Math.random() * 2));
+                        }
+                    }
+                }
+            }
+
+            function updateLights() {
+                if (isSwitching) {
+                    const directionThatWasGreen = currentGreenDirection === 'NS' ? 'WE' : 'NS';
+                    setLightActive(['n', 's'], directionThatWasGreen === 'WE' ? 'yellow' : 'red');
+                    setLightActive(['w', 'e'], directionThatWasGreen === 'NS' ? 'yellow' : 'red');
+                } else if (currentGreenDirection === 'ALL_RED') {
+                    setLightActive(['n', 's', 'w', 'e'], 'red');
+                    statusText.textContent = 'Membersihkan...';
+                    statusText.className = 'text-2xl font-bold text-yellow-500';
+                } else {
+                    const isNSGreen = currentGreenDirection === 'NS';
+                    setLightActive(['n', 's'], isNSGreen ? 'green' : 'red');
+                    setLightActive(['w', 'e'], !isNSGreen ? 'green' : 'red');
+                    statusText.textContent = isNSGreen ? 'U-S Hijau' : 'B-T Hijau';
+                    statusText.className = `text-2xl font-bold ${isNSGreen ? 'text-green-600' : 'text-blue-600'}`;
+                }
+            }
+            
+            function setLightActive(dirs, color) {
+                const colorIndex = { red: 0, yellow: 1, green: 2 };
+                dirs.forEach(dir => {
+                    for(let i=0; i<3; i++) lights[dir][i].classList.remove('active');
+                    lights[dir][colorIndex[color]].classList.add('active');
+                });
+            }
+            
+            function isIntersectionClear(directionToCheck) {
+                const containerSize = container.offsetWidth;
+                const intersectionZone = {
+                    x1: containerSize / 2 - 140, x2: containerSize / 2 + 140,
+                    y1: containerSize / 2 - 140, y2: containerSize / 2 + 140,
+                };
+                for (const car of cars) {
+                    const carDirectionIsNS = car.direction === 'n' || car.direction === 's';
+                    const carDirectionIsWE = car.direction === 'w' || car.direction === 'e';
+                    if ((directionToCheck === 'NS' && carDirectionIsNS) || (directionToCheck === 'WE' && carDirectionIsWE)) {
+                        if (car.x > intersectionZone.x1 && car.x < intersectionZone.x2 && car.y > intersectionZone.y1 && car.y < intersectionZone.y2) {
+                            return false; 
+                        }
+                    }
+                }
+                return true; 
+            }
+
+            function switchLights() {
+                const YELLOW_LIGHT_DURATION = 2000;
+                const BASE_GREEN_LIGHT_DURATION = 5000;
+                const EXTRA_GREEN_PER_CAR = 300;
+                const directionThatWasGreen = currentGreenDirection;
+                isSwitching = true;
+                updateLights();
+
+                setTimeout(() => {
+                    isSwitching = false;
+                    currentGreenDirection = 'ALL_RED';
+                    updateLights();
+
+                    const checkClearInterval = setInterval(() => {
+                        if (isIntersectionClear(directionThatWasGreen)) {
+                            clearInterval(checkClearInterval);
+                            
+                            aiDecisionEl.textContent = `Persimpangan bersih. Memberi jeda keamanan...`;
+                            
+                            setTimeout(() => {
+                                currentGreenDirection = (directionThatWasGreen === 'NS') ? 'WE' : 'NS';
+                                updateLights();
+                                const waitingCars = countWaitingCars(currentGreenDirection);
+                                const greenDuration = BASE_GREEN_LIGHT_DURATION + (waitingCars * EXTRA_GREEN_PER_CAR);
+                                aiDecisionEl.textContent = `Lampu hijau untuk ${currentGreenDirection} selama ${(greenDuration / 1000).toFixed(1)} dtk.`;
+                                setTimeout(aiDecisionMaker, greenDuration);
+                            }, ALL_RED_PAUSE_DURATION);
+                        }
+                    }, 100);
+                }, YELLOW_LIGHT_DURATION);
+            }
+
+            function aiDecisionMaker() {
+                const AI_DECISION_INTERVAL = 5000;
+                if (isSwitching || currentGreenDirection === 'ALL_RED') return;
+                
+                const nsWaiting = countWaitingCars('NS');
+                const weWaiting = countWaitingCars('WE');
+                nsCountEl.textContent = nsWaiting;
+                weCountEl.textContent = weWaiting;
+
+                const shouldSwitchToWE = currentGreenDirection === 'NS' && (weWaiting > nsWaiting + 2 || (weWaiting > 0 && nsWaiting === 0));
+                const shouldSwitchToNS = currentGreenDirection === 'WE' && (nsWaiting > weWaiting + 2 || (nsWaiting > 0 && weWaiting === 0));
+
+                if (shouldSwitchToWE) {
+                    aiDecisionEl.textContent = `Kepadatan B-T (${weWaiting}) signifikan. Beralih...`;
+                    switchLights();
+                } else if (shouldSwitchToNS) {
+                    aiDecisionEl.textContent = `Kepadatan U-S (${nsWaiting}) signifikan. Beralih...`;
+                    switchLights();
+                } else {
+                    aiDecisionEl.textContent = "Mempertahankan status lampu. Arus lancar.";
+                    setTimeout(aiDecisionMaker, AI_DECISION_INTERVAL);
+                }
+            }
+
+            function countWaitingCars(direction) {
+                return cars.filter(car => car.stopped && ((direction === 'NS' && (car.direction === 'n' || car.direction === 's')) || (direction === 'WE' && (car.direction === 'w' || car.direction === 'e')))).length;
+            }
+
+            function drawCctvFeeds() {
+                Object.keys(cctvContexts).forEach(dir => {
+                    const ctx = cctvContexts[dir];
+                    const canvas = ctx.canvas;
+                    ctx.fillStyle = '#212529';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // PERBAIKAN: Menukar logika penggambaran untuk CCTV Utara dan Selatan
+                    let directionToFilter = dir;
+                    if (dir === 'n') {
+                        directionToFilter = 's'; // CCTV Utara (U) menampilkan mobil dari arah 's' (atas)
+                    } else if (dir === 's') {
+                        directionToFilter = 'n'; // CCTV Selatan (S) menampilkan mobil dari arah 'n' (bawah)
+                    }
+
+                    let detectedCount = 0;
+                    cars.filter(c => c.direction === directionToFilter).forEach(car => {
+                        detectedCount++;
+                        let x, y, w = 12, h = 20;
+                        
+                        // Gunakan 'dir' asli untuk menentukan orientasi gambar di canvas
+                        if(dir === 'n' || dir === 's') { 
+                            x = canvas.width / 2 - w/2 + (car.lane === 0 ? -15 : 15);
+                            y = (car.y / container.offsetHeight) * canvas.height;
+                        } else {
+                            y = canvas.height / 2 - w/2 + (car.lane === 0 ? -15 : 15);
+                            x = (car.x / container.offsetWidth) * canvas.width;
+                            [w,h] = [h,w];
+                        }
+                        ctx.fillStyle = car.color;
+                        ctx.fillRect(x, y, w, h);
+                    });
+                    if (cctvCounts[dir]) {
+                        cctvCounts[dir].textContent = detectedCount;
+                    }
+                });
+            }
+
+            function gameLoop() {
+                moveCars();
+                drawCctvFeeds();
+                requestAnimationFrame(gameLoop);
+            }
+            
+            function updateZoom() {
+                container.style.transform = `scale(${zoomLevel})`;
+                zoomDisplay.textContent = `${Math.round(zoomLevel * 100)}%`;
+            }
+
+            // --- INITIALIZATION ---
+            function init() {
+                ['n','s','e','w'].forEach(setupMediaDetection);
+                
+                setInterval(syncSimCarsWithDetection, 2000); 
+                
+                geminiBtn.addEventListener('click', getGeminiPrediction);
+                
+                zoomInBtn.addEventListener('click', () => {
+                    zoomLevel = Math.min(1.5, zoomLevel + 0.1); 
+                    updateZoom();
+                });
+
+                zoomOutBtn.addEventListener('click', () => {
+                    zoomLevel = Math.max(0.4, zoomLevel - 0.1); 
+                    updateZoom();
+                });
+
+                gameLoop();
+                updateLights();
+                const BASE_GREEN_LIGHT_DURATION = 5000;
+                setTimeout(aiDecisionMaker, BASE_GREEN_LIGHT_DURATION);
+            }
+            
+            async function getGeminiPrediction() {
+                geminiBtn.disabled = true;
+                geminiBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Menganalisis...';
+                geminiResultContainer.classList.remove('hidden');
+                geminiResultText.textContent = 'Menghubungi AI Gemini untuk analisis...';
+
+                const nsWaiting = countWaitingCars('NS');
+                const weWaiting = countWaitingCars('WE');
+                const prompt = `Anda adalah AI analisis lalu lintas untuk Bandung pada ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}. Terdapat ${nsWaiting} mobil menunggu di arah Utara-Selatan dan ${weWaiting} mobil di arah Barat-Timur. Berikan prediksi singkat (1 kalimat) untuk tren 15 menit ke depan dan satu rekomendasi (1 kalimat). Jawab dalam Bahasa Indonesia.`;
+
+                try {
+                    let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                    const payload = { contents: chatHistory };
+                    const apiKey = ""; // API key will be injected by the environment
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
+                    const result = await response.json();
+                    if (result.candidates && result.candidates[0]?.content?.parts?.[0]) {
+                        const text = result.candidates[0].content.parts[0].text;
+                        geminiResultText.innerHTML = `<strong>Analisis AI:</strong> ${text}`;
+                    } else { throw new Error('Invalid response structure from API.'); }
+                } catch (error) {
+                    console.error("Gemini API Error:", error);
+                    geminiResultText.textContent = 'Gagal mendapatkan analisis dari AI.';
+                } finally {
+                    geminiBtn.disabled = false;
+                    geminiBtn.innerHTML = '<i class="fas fa-star mr-2"></i>Dapatkan Analisis Prediktif';
+                }
+            }
+
+            init();
+        });
+    </script>
+</body>
+</html>
+
