@@ -14,16 +14,21 @@
             overflow-x: hidden;
         }
         #simulation-container {
+            position: relative;
+            width: 300%;
+            height: 300%;
+            left: -100%;
+            top: -100%;
             transform-origin: center center;
             transition: transform 0.3s ease-in-out;
         }
         .road { background-color: #6c757d; position: absolute; z-index: 1; }
-        .road-h { width: 100%; height: 280px; top: 50%; transform: translateY(-50%); }
-        .road-v { height: 100%; width: 280px; left: 50%; transform: translateX(-50%); }
+        .road-h { width: 100%; height: 420px; top: 50%; transform: translateY(-50%); }
+        .road-v { height: 100%; width: 420px; left: 50%; transform: translateX(-50%); }
         
         .intersection-center {
             position: absolute;
-            width: 280px; height: 280px;
+            width: 420px; height: 420px;
             background-color: #6c757d;
             z-index: 2;
             top: 50%; left: 50%;
@@ -71,10 +76,10 @@
             border-radius: 4px 4px 2px 2px;
         }
 
-        #light-n { top: calc(50% - 140px - 40px); left: calc(50% + 10px); }
-        #light-s { bottom: calc(50% - 140px - 40px); left: calc(50% - 40px); transform: rotate(180deg); }
-        #light-e { top: calc(50% - 40px); left: calc(50% + 140px + 10px); transform: rotate(90deg); }
-        #light-w { top: calc(50% + 10px); right: calc(50% + 140px + 10px); transform: rotate(-90deg); }
+        #light-n { top: calc(50% - 210px - 40px); left: calc(50% + 10px); }
+        #light-s { bottom: calc(50% - 210px - 40px); left: calc(50% - 40px); transform: rotate(180deg); }
+        #light-e { top: calc(50% - 40px); left: calc(50% + 210px + 10px); transform: rotate(90deg); }
+        #light-w { top: calc(50% + 10px); right: calc(50% + 210px + 10px); transform: rotate(-90deg); }
 
         .cctv-feed {
             background: #000;
@@ -95,25 +100,24 @@
         @keyframes blink-rec { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .media-input-label {
             cursor: pointer;
-            padding: 8px 12px;
+            padding: 6px 10px;
             background-color: #4a90e2;
             color: white;
             border-radius: 5px;
             display: inline-block;
             text-align: center;
             font-size: 12px;
+            margin-top: 4px;
         }
         .media-input-label:hover { background-color: #357abd; }
         .media-input { display: none; }
         .media-preview-container {
-            width: 300px;
-            height: 168px;
-            margin-left: auto;
-            margin-right: auto;
-            margin-bottom: 0.5rem;
+            width: 100%;
+            aspect-ratio: 16 / 9;
             background-color: #000;
             border-radius: 0.25rem;
             position: relative;
+            overflow: hidden;
         }
         .media-preview-container > * {
             position: absolute;
@@ -136,7 +140,7 @@
 
         <!-- Simulation Area -->
         <div id="viewport" class="relative w-full max-w-7xl aspect-square bg-green-100 rounded-2xl shadow-2xl overflow-hidden border-8 border-white">
-            <div id="simulation-container" class="relative w-full h-full">
+            <div id="simulation-container">
                 <div class="road road-h"></div>
                 <div class="road road-v"></div>
                 <div class="intersection-center"></div>
@@ -154,9 +158,9 @@
             </div>
         </div>
         
-        <div class="w-full max-w-7xl mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Left Column: Dashboards -->
-            <div class="lg:col-span-2 flex flex-col gap-6">
+        <div class="w-full max-w-7xl mt-6 grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <!-- Left Column: Dashboards & Media Input -->
+            <div class="lg:col-span-3 flex flex-col gap-6">
                 <!-- Dashboard -->
                 <div class="w-full p-5 bg-white rounded-xl shadow-lg">
                     <h2 class="text-xl font-bold mb-4 text-center text-gray-700">Dasbor Kontrol AI</h2>
@@ -172,76 +176,93 @@
 
                 <!-- Vehicle Counting Section -->
                 <div class="w-full p-5 bg-white rounded-xl shadow-lg">
-                    <h2 class="text-xl font-bold mb-3 text-center text-gray-700">Hitung Kendaraan dari Media (via YOLO API)</h2>
-                    <!-- ============================ PERHATIKAN DI SINI (1) ============================ -->
-                    <p id="model-status" class="text-center text-sm text-green-600 mb-4 break-all px-4"><i class="fas fa-server"></i> Menunggu koneksi ke server YOLO di `https://ac0df9614c03.ngrok-free.app`</p>
-                    <!-- ============================================================================== -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- North -->
-                        <div class="text-center">
-                            <h3 class="font-semibold text-gray-600 mb-2">Utara</h3>
-                            <div class="media-preview-container">
-                                <video id="video-preview-s" loop muted playsinline class="hidden"></video>
-                                <img id="image-preview-s" class="hidden" />
-                                <canvas id="media-canvas-s" width="300" height="168"></canvas>
-                            </div>
-                            <label for="media-input-s" class="media-input-label"><i class="fas fa-upload mr-1"></i> Pilih File</label>
-                            <input type="file" id="media-input-s" accept="video/*,image/*" class="media-input" />
-                            <div class="mt-2">
-                                <span class="font-semibold">Terdeteksi:</span>
-                                <span id="vehicle-count-s" class="text-xl font-bold text-indigo-600">0</span>
-                            </div>
-                        </div>
-                         <!-- South -->
-                        <div class="text-center">
-                            <h3 class="font-semibold text-gray-600 mb-2">Selatan</h3>
-                            <div class="media-preview-container">
-                                <video id="video-preview-n" loop muted playsinline class="hidden"></video>
-                                <img id="image-preview-n" class="hidden" />
-                                <canvas id="media-canvas-n" width="300" height="168"></canvas>
-                            </div>
-                            <label for="media-input-n" class="media-input-label"><i class="fas fa-upload mr-1"></i> Pilih File</label>
-                            <input type="file" id="media-input-n" accept="video/*,image/*" class="media-input" />
-                            <div class="mt-2">
-                                <span class="font-semibold">Terdeteksi:</span>
-                                <span id="vehicle-count-n" class="text-xl font-bold text-indigo-600">0</span>
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-xl font-bold text-center text-gray-700">Hitung Kendaraan (YOLO API)</h2>
+                        <button id="test-connection-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold py-1 px-3 rounded-lg">Tes Koneksi</button>
+                    </div>
+                    <p id="model-status" class="text-center text-sm text-gray-500 mb-2 break-all px-4"><i class="fas fa-server"></i> Server: `https://b853cc63b626.ngrok-free.app`</p>
+                    
+                    <div class="grid grid-cols-1 gap-4">
+                        <!-- North Direction -->
+                        <div class="border p-3 rounded-lg">
+                            <h3 class="font-bold text-lg text-center text-gray-600 mb-2">Utara (Total: <span id="vehicle-count-s" class="text-indigo-600">0</span>)</h3>
+                            <div class="grid grid-cols-3 gap-3">
+                                <div class="text-center">
+                                    <div class="media-preview-container"><video id="video-preview-s-1" loop muted playsinline class="hidden"></video><img id="image-preview-s-1" class="hidden" /><canvas id="media-canvas-s-1"></canvas></div>
+                                    <label for="media-input-s-1" class="media-input-label">Jalur 1</label><input type="file" id="media-input-s-1" accept="video/*,image/*" class="media-input" />
+                                </div>
+                                <div class="text-center">
+                                    <div class="media-preview-container"><video id="video-preview-s-2" loop muted playsinline class="hidden"></video><img id="image-preview-s-2" class="hidden" /><canvas id="media-canvas-s-2"></canvas></div>
+                                    <label for="media-input-s-2" class="media-input-label">Jalur 2</label><input type="file" id="media-input-s-2" accept="video/*,image/*" class="media-input" />
+                                </div>
+                                <div class="text-center">
+                                    <div class="media-preview-container"><video id="video-preview-s-3" loop muted playsinline class="hidden"></video><img id="image-preview-s-3" class="hidden" /><canvas id="media-canvas-s-3"></canvas></div>
+                                    <label for="media-input-s-3" class="media-input-label">Jalur 3</label><input type="file" id="media-input-s-3" accept="video/*,image/*" class="media-input" />
+                                </div>
                             </div>
                         </div>
-                        <!-- East -->
-                        <div class="text-center">
-                            <h3 class="font-semibold text-gray-600 mb-2">Timur</h3>
-                            <div class="media-preview-container">
-                                <video id="video-preview-e" loop muted playsinline class="hidden"></video>
-                                <img id="image-preview-e" class="hidden" />
-                                <canvas id="media-canvas-e" width="300" height="168"></canvas>
-                            </div>
-                            <label for="media-input-e" class="media-input-label"><i class="fas fa-upload mr-1"></i> Pilih File</label>
-                            <input type="file" id="media-input-e" accept="video/*,image/*" class="media-input" />
-                            <div class="mt-2">
-                                <span class="font-semibold">Terdeteksi:</span>
-                                <span id="vehicle-count-e" class="text-xl font-bold text-indigo-600">0</span>
+
+                        <!-- South Direction -->
+                        <div class="border p-3 rounded-lg">
+                            <h3 class="font-bold text-lg text-center text-gray-600 mb-2">Selatan (Total: <span id="vehicle-count-n" class="text-indigo-600">0</span>)</h3>
+                            <div class="grid grid-cols-3 gap-3">
+                                <div class="text-center">
+                                    <div class="media-preview-container"><video id="video-preview-n-1" loop muted playsinline class="hidden"></video><img id="image-preview-n-1" class="hidden" /><canvas id="media-canvas-n-1"></canvas></div>
+                                    <label for="media-input-n-1" class="media-input-label">Jalur 1</label><input type="file" id="media-input-n-1" accept="video/*,image/*" class="media-input" />
+                                </div>
+                                <div class="text-center">
+                                    <div class="media-preview-container"><video id="video-preview-n-2" loop muted playsinline class="hidden"></video><img id="image-preview-n-2" class="hidden" /><canvas id="media-canvas-n-2"></canvas></div>
+                                    <label for="media-input-n-2" class="media-input-label">Jalur 2</label><input type="file" id="media-input-n-2" accept="video/*,image/*" class="media-input" />
+                                </div>
+                                <div class="text-center">
+                                    <div class="media-preview-container"><video id="video-preview-n-3" loop muted playsinline class="hidden"></video><img id="image-preview-n-3" class="hidden" /><canvas id="media-canvas-n-3"></canvas></div>
+                                    <label for="media-input-n-3" class="media-input-label">Jalur 3</label><input type="file" id="media-input-n-3" accept="video/*,image/*" class="media-input" />
+                                </div>
                             </div>
                         </div>
-                        <!-- West -->
-                        <div class="text-center">
-                            <h3 class="font-semibold text-gray-600 mb-2">Barat</h3>
-                            <div class="media-preview-container">
-                                <video id="video-preview-w" loop muted playsinline class="hidden"></video>
-                                <img id="image-preview-w" class="hidden" />
-                                <canvas id="media-canvas-w" width="300" height="168"></canvas>
+
+                        <!-- East Direction -->
+                        <div class="border p-3 rounded-lg">
+                            <h3 class="font-bold text-lg text-center text-gray-600 mb-2">Timur (Total: <span id="vehicle-count-e" class="text-indigo-600">0</span>)</h3>
+                            <div class="grid grid-cols-3 gap-3">
+                               <div class="text-center">
+                                    <div class="media-preview-container"><video id="video-preview-e-1" loop muted playsinline class="hidden"></video><img id="image-preview-e-1" class="hidden" /><canvas id="media-canvas-e-1"></canvas></div>
+                                    <label for="media-input-e-1" class="media-input-label">Jalur 1</label><input type="file" id="media-input-e-1" accept="video/*,image/*" class="media-input" />
+                                </div>
+                                <div class="text-center">
+                                    <div class="media-preview-container"><video id="video-preview-e-2" loop muted playsinline class="hidden"></video><img id="image-preview-e-2" class="hidden" /><canvas id="media-canvas-e-2"></canvas></div>
+                                    <label for="media-input-e-2" class="media-input-label">Jalur 2</label><input type="file" id="media-input-e-2" accept="video/*,image/*" class="media-input" />
+                                </div>
+                                <div class="text-center">
+                                    <div class="media-preview-container"><video id="video-preview-e-3" loop muted playsinline class="hidden"></video><img id="image-preview-e-3" class="hidden" /><canvas id="media-canvas-e-3"></canvas></div>
+                                    <label for="media-input-e-3" class="media-input-label">Jalur 3</label><input type="file" id="media-input-e-3" accept="video/*,image/*" class="media-input" />
+                                </div>
                             </div>
-                            <label for="media-input-w" class="media-input-label"><i class="fas fa-upload mr-1"></i> Pilih File</label>
-                            <input type="file" id="media-input-w" accept="video/*,image/*" class="media-input" />
-                            <div class="mt-2">
-                                <span class="font-semibold">Terdeteksi:</span>
-                                <span id="vehicle-count-w" class="text-xl font-bold text-indigo-600">0</span>
+                        </div>
+
+                        <!-- West Direction -->
+                        <div class="border p-3 rounded-lg">
+                            <h3 class="font-bold text-lg text-center text-gray-600 mb-2">Barat (Total: <span id="vehicle-count-w" class="text-indigo-600">0</span>)</h3>
+                            <div class="grid grid-cols-3 gap-3">
+                                <div class="text-center">
+                                    <div class="media-preview-container"><video id="video-preview-w-1" loop muted playsinline class="hidden"></video><img id="image-preview-w-1" class="hidden" /><canvas id="media-canvas-w-1"></canvas></div>
+                                    <label for="media-input-w-1" class="media-input-label">Jalur 1</label><input type="file" id="media-input-w-1" accept="video/*,image/*" class="media-input" />
+                                </div>
+                                <div class="text-center">
+                                    <div class="media-preview-container"><video id="video-preview-w-2" loop muted playsinline class="hidden"></video><img id="image-preview-w-2" class="hidden" /><canvas id="media-canvas-w-2"></canvas></div>
+                                    <label for="media-input-w-2" class="media-input-label">Jalur 2</label><input type="file" id="media-input-w-2" accept="video/*,image/*" class="media-input" />
+                                </div>
+                                <div class="text-center">
+                                    <div class="media-preview-container"><video id="video-preview-w-3" loop muted playsinline class="hidden"></video><img id="image-preview-w-3" class="hidden" /><canvas id="media-canvas-w-3"></canvas></div>
+                                    <label for="media-input-w-3" class="media-input-label">Jalur 3</label><input type="file" id="media-input-w-3" accept="video/*,image/*" class="media-input" />
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
             <!-- Right Column: Gemini & CCTV -->
-            <div class="flex flex-col gap-6">
+            <div class="lg:col-span-2 flex flex-col gap-6">
                 <!-- Gemini API Feature Section -->
                 <div class="w-full p-5 bg-white rounded-xl shadow-lg text-center">
                      <h3 class="text-xl font-bold text-blue-600 mb-3">AI Prediktif Gemini</h3>
@@ -271,11 +292,7 @@
             // --- CONFIGURATION ---
             const MAX_SPEED = 2.0;
             const SAFE_DISTANCE = 90; 
-            
-            // ============================ PERHATIKAN DI SINI (2) ============================
-            const YOLO_API_ENDPOINT = 'https://e53e93598bd6.ngrok-free.app/api/detect';
-            // ==============================================================================
-            
+            const YOLO_API_ENDPOINT = 'https://729a38e57ae7.ngrok-free.app/api/detect';
             const ALL_RED_PAUSE_DURATION = 1500;
 
             // --- DOM ELEMENTS ---
@@ -292,6 +309,7 @@
             const zoomInBtn = document.getElementById('zoom-in-btn');
             const zoomOutBtn = document.getElementById('zoom-out-btn');
             const zoomDisplay = document.getElementById('zoom-display');
+            const testConnectionBtn = document.getElementById('test-connection-btn');
             
             const lights = { n: document.querySelectorAll('#light-n .light'), s: document.querySelectorAll('#light-s .light'), w: document.querySelectorAll('#light-w .light'), e: document.querySelectorAll('#light-e .light') };
             const cctvContexts = { n: document.getElementById('cctv-n').getContext('2d'), s: document.getElementById('cctv-s').getContext('2d'), w: document.getElementById('cctv-w').getContext('2d'), e: document.getElementById('cctv-e').getContext('2d') };
@@ -302,17 +320,27 @@
             let carIdCounter = 0;
             let currentGreenDirection = 'NS'; 
             let isSwitching = false;
-            let zoomLevel = 1.0;
+            let zoomLevel = 0.3;
 
             // --- AI & MEDIA DETECTION STATE ---
             const vehicleClasses = ['car', 'motorcycle', 'bus', 'truck', 'mobil', 'motor'];
+            const latestPredictions = { n: {}, s: {}, e: {}, w: {} };
+            const detectionIntervals = { n: {}, s: {}, e: {}, w: {} };
+            const individualCounts = { n: {}, s: {}, e: {}, w: {} };
+
 
             // --- CAR LOGIC ---
             function createCar(direction, lane) {
                 const containerSize = container.offsetWidth;
                 const carWidth = 28;
                 const carHeight = 45;
-                const laneOffset = (lane === 0) ? 35 : 85;
+                let laneOffset;
+                switch(lane) {
+                    case 0: laneOffset = 45; break;
+                    case 1: laneOffset = 105; break;
+                    case 2: laneOffset = 165; break;
+                    default: laneOffset = 105;
+                }
 
                 const carEl = document.createElement('div');
                 const hue = Math.random() * 360;
@@ -332,15 +360,16 @@
                 cars.push(car);
                 carContainer.appendChild(car.el);
             }
-
-            function moveCars() {
+            
+            // --- LOGIKA PERGERAKAN MOBIL YANG DISEMPURNAKAN ---
+            function moveCars(carsByDirection) {
                 const containerSize = container.offsetWidth;
                 const stopLines = {
-                    n: containerSize / 2 + 140, s: containerSize / 2 - 140,
-                    w: containerSize / 2 + 140, e: containerSize / 2 - 140
+                    n: containerSize / 2 + 210, s: containerSize / 2 - 210,
+                    w: containerSize / 2 + 210, e: containerSize / 2 - 210
                 };
 
-                cars.forEach(car => {
+                cars.forEach((car) => {
                     let closestObstacle = { distance: Infinity, speed: 0 };
                     let targetSpeed = MAX_SPEED;
 
@@ -361,22 +390,23 @@
                             closestObstacle.speed = 0;
                         }
                     }
+                    
+                    const carsInSameLane = carsByDirection[car.direction][car.lane];
+                    const carIndexInLane = carsInSameLane.findIndex(c => c.id === car.id);
+                    const carInFront = carsInSameLane[carIndexInLane + 1]; // Mobil di depan selalu elemen berikutnya di array yang sudah diurutkan
 
-                    for (const otherCar of cars) {
-                        if (car.id === otherCar.id || car.direction !== otherCar.direction || car.lane !== otherCar.lane) continue;
-                        
-                        let distToOtherCar = Infinity;
-                        let isOtherCarInFront = false;
+                    if (carInFront) {
+                        let distToOtherCar;
                         switch (car.direction) {
-                            case 'n': isOtherCarInFront = otherCar.y < car.y; if(isOtherCarInFront) distToOtherCar = car.y - otherCar.y; break;
-                            case 's': isOtherCarInFront = otherCar.y > car.y; if(isOtherCarInFront) distToOtherCar = otherCar.y - car.y; break;
-                            case 'w': isOtherCarInFront = otherCar.x < car.x; if(isOtherCarInFront) distToOtherCar = car.x - otherCar.x; break;
-                            case 'e': isOtherCarInFront = otherCar.x > car.x; if(isOtherCarInFront) distToOtherCar = otherCar.x - car.x; break;
+                            case 'n': distToOtherCar = car.y - carInFront.y; break;
+                            case 's': distToOtherCar = carInFront.y - car.y; break;
+                            case 'w': distToOtherCar = car.x - carInFront.x; break;
+                            case 'e': distToOtherCar = carInFront.x - car.x; break;
                         }
 
-                        if (isOtherCarInFront && distToOtherCar < closestObstacle.distance) {
+                        if (distToOtherCar < closestObstacle.distance) {
                             closestObstacle.distance = distToOtherCar;
-                            closestObstacle.speed = otherCar.speed;
+                            closestObstacle.speed = carInFront.speed;
                         }
                     }
 
@@ -392,7 +422,6 @@
                     car.speed += (targetSpeed - car.speed) * brakingFactor;
                     if (car.speed < 0) car.speed = 0;
 
-
                     switch (car.direction) {
                         case 'n': car.y -= car.speed; break;
                         case 's': car.y += car.speed; break;
@@ -404,7 +433,8 @@
                 });
 
                 cars = cars.filter(car => {
-                    if (car.y < -150 || car.y > containerSize + 150 || car.x < -150 || car.x > containerSize + 150) {
+                    const outOfBounds = car.y < -150 || car.y > containerSize + 150 || car.x < -150 || car.x > containerSize + 150;
+                    if (outOfBounds) {
                         car.el.remove();
                         return false;
                     }
@@ -413,133 +443,210 @@
             }
             
             // --- MEDIA DETECTION LOGIC (YOLO API) ---
-            function setupMediaDetection(dir) {
-                const input = document.getElementById(`media-input-${dir}`);
-                const videoPreview = document.getElementById(`video-preview-${dir}`);
-                const imagePreview = document.getElementById(`image-preview-${dir}`);
-                const canvas = document.getElementById(`media-canvas-${dir}`);
-                const countEl = document.getElementById(`vehicle-count-${dir}`);
+            function setupMediaDetection(dir, slot) {
+                const input = document.getElementById(`media-input-${dir}-${slot}`);
+                const videoPreview = document.getElementById(`video-preview-${dir}-${slot}`);
+                const imagePreview = document.getElementById(`image-preview-${dir}-${slot}`);
+                const canvas = document.getElementById(`media-canvas-${dir}-${slot}`);
+                
+                individualCounts[dir][slot] = 0;
 
                 input.addEventListener('change', function() {
                     const file = this.files[0];
                     if (!file) return;
 
+                    if (detectionIntervals[dir][slot]) {
+                        clearInterval(detectionIntervals[dir][slot]);
+                        detectionIntervals[dir][slot] = null;
+                    }
+
+                    latestPredictions[dir][slot] = [];
+                    videoPreview.classList.add('hidden');
+                    imagePreview.classList.add('hidden');
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
                     const fileURL = URL.createObjectURL(file);
-                    countEl.textContent = '...';
 
                     if (file.type.startsWith('video/')) {
+                        imagePreview.classList.add('hidden');
                         videoPreview.src = fileURL;
+                        videoPreview.classList.remove('hidden');
                         videoPreview.play().catch(e => console.error("Video play failed:", e));
                     } else if (file.type.startsWith('image/')) {
+                        videoPreview.classList.add('hidden');
                         imagePreview.src = fileURL;
-                        imagePreview.onload = () => {
-                            detectAndDraw(imagePreview, canvas, countEl);
-                        };
+                        imagePreview.classList.remove('hidden');
+                        imagePreview.onload = () => detectAndDrawOnImage(imagePreview, canvas, dir, slot);
                     }
                 });
 
                 videoPreview.addEventListener('play', function() {
-                    runVideoDetectionLoop(this, canvas, countEl);
-                });
-            }
-
-            async function runVideoDetectionLoop(video, canvas, countEl) {
-                if (video.paused || video.ended) {
-                    return; 
-                }
-                
-                await detectAndDraw(video, canvas, countEl);
-                
-                requestAnimationFrame(() => runVideoDetectionLoop(video, canvas, countEl));
-            }
-
-            function detectAndDraw(mediaElement, canvas, countEl) {
-                return new Promise((resolve) => {
-                    const ctx = canvas.getContext('2d');
-                    canvas.width = canvas.clientWidth;
-                    canvas.height = canvas.clientHeight;
-                    
-                    ctx.drawImage(mediaElement, 0, 0, canvas.width, canvas.height);
-
-                    const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = mediaElement.videoWidth || mediaElement.naturalWidth;
-                    tempCanvas.height = mediaElement.videoHeight || mediaElement.naturalHeight;
-                    const tempCtx = tempCanvas.getContext('2d');
-                    tempCtx.drawImage(mediaElement, 0, 0, tempCanvas.width, tempCanvas.height);
-                    
-                    tempCanvas.toBlob(async function(blob) {
-                        if (!blob) {
-                            resolve();
+                    detectionIntervals[dir][slot] = setInterval(() => {
+                        if (videoPreview.paused || videoPreview.ended) {
+                            if (detectionIntervals[dir][slot]) clearInterval(detectionIntervals[dir][slot]);
                             return;
-                        }
-                        const formData = new FormData();
-                        formData.append('image', blob, 'image.jpg');
+                        };
+                        sendFrameToApi(videoPreview, dir, slot);
+                    }, 2500); 
 
-                        try {
-                            const response = await fetch(YOLO_API_ENDPOINT, {
-                                method: 'POST',
-                                body: formData
-                            });
-
-                            if (!response.ok) {
-                                throw new Error(`API Error: ${response.statusText}`);
-                            }
-
-                            const predictions = await response.json();
-                            
-                            let vehicleCount = 0;
-                            predictions.forEach(prediction => {
-                                if (vehicleClasses.includes(prediction.class.toLowerCase())) {
-                                    vehicleCount++;
-                                    const bbox = prediction.bbox;
-                                    const scaleX = canvas.width / tempCanvas.width;
-                                    const scaleY = canvas.height / tempCanvas.height;
-                                    const scaledBbox = [bbox[0] * scaleX, bbox[1] * scaleY, bbox[2] * scaleX, bbox[3] * scaleY];
-
-                                    ctx.strokeStyle = '#28a745';
-                                    ctx.lineWidth = 2;
-                                    ctx.strokeRect(...scaledBbox);
-                                    
-                                    ctx.fillStyle = '#28a745';
-                                    ctx.font = '12px Inter';
-                                    const text = `${prediction.class} (${Math.round(prediction.score * 100)}%)`;
-                                    ctx.fillText(text, scaledBbox[0], scaledBbox[1] > 10 ? scaledBbox[1] - 5 : 10);
-                                }
-                            });
-                            countEl.textContent = vehicleCount;
-
-                        } catch (error) {
-                            console.error('Error calling YOLO API:', error);
-                            countEl.textContent = 'X';
-                            modelStatusEl.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Gagal terhubung ke server YOLO. Pastikan server sudah berjalan.`;
-                            modelStatusEl.className = 'text-center text-sm text-red-600 mb-4';
-                        } finally {
-                            resolve();
-                        }
-                    }, 'image/jpeg');
+                    drawBoxesLoop(canvas, videoPreview, dir, slot);
                 });
             }
 
-            // --- SIMULATION & UI LOGIC ---
-            function syncSimCarsWithDetection() {
-                const videoCounts = {
-                    n: parseInt(document.getElementById('vehicle-count-n').textContent) || 0,
-                    s: parseInt(document.getElementById('vehicle-count-s').textContent) || 0,
-                    e: parseInt(document.getElementById('vehicle-count-e').textContent) || 0,
-                    w: parseInt(document.getElementById('vehicle-count-w').textContent) || 0,
-                };
+            async function sendFrameToApi(videoElement, dir, slot) {
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = videoElement.videoWidth;
+                tempCanvas.height = videoElement.videoHeight;
+                tempCanvas.getContext('2d').drawImage(videoElement, 0, 0, tempCanvas.width, tempCanvas.height);
+                
+                tempCanvas.toBlob(async function(blob) {
+                    if (!blob) return;
+                    const formData = new FormData();
+                    formData.append('image', blob, 'image.jpg');
 
-                for (const dir in videoCounts) {
-                    const targetCount = videoCounts[dir];
-                    let currentCount = cars.filter(c => c.direction === dir).length;
+                    try {
+                        const response = await fetch(YOLO_API_ENDPOINT, { 
+                            method: 'POST', 
+                            headers: { 'ngrok-skip-browser-warning': 'true' },
+                            body: formData 
+                        });
+                        if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                        const predictions = await response.json();
+                        
+                        latestPredictions[dir][slot] = predictions;
+                        individualCounts[dir][slot] = predictions.filter(p => vehicleClasses.includes(p.class.toLowerCase())).length;
+                         modelStatusEl.innerHTML = `<i class="fas fa-check-circle mr-2"></i>Berhasil terhubung ke server YOLO.`;
+                        modelStatusEl.className = 'text-center text-sm text-green-600 mb-2 break-all px-4';
+
+                    } catch (error) {
+                        console.error('Error calling YOLO API:', error);
+                        modelStatusEl.innerHTML = `<i class="fas fa-exclamation-triangle mr-2"></i>Koneksi Gagal! Pastikan URL ngrok di file HTML sama dengan URL di Colab.`;
+                        modelStatusEl.className = 'text-center text-sm text-red-600 mb-2 break-all px-4';
+                        latestPredictions[dir][slot] = [];
+                        individualCounts[dir][slot] = 0;
+                    }
+                }, 'image/jpeg');
+            }
+
+            function drawBoxesLoop(canvas, videoElement, dir, slot) {
+                if (videoElement.paused || videoElement.ended) return;
+                
+                const ctx = canvas.getContext('2d');
+                canvas.width = videoElement.clientWidth;
+                canvas.height = videoElement.clientHeight;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                const predictions = latestPredictions[dir][slot];
+                if (predictions && predictions.length > 0) {
+                    const scaleX = canvas.width / videoElement.videoWidth;
+                    const scaleY = canvas.height / videoElement.videoHeight;
+
+                    predictions.forEach(prediction => {
+                        if (vehicleClasses.includes(prediction.class.toLowerCase())) {
+                            const bbox = prediction.bbox;
+                            const scaledBbox = [bbox[0] * scaleX, bbox[1] * scaleY, bbox[2] * scaleX, bbox[3] * scaleY];
+                            ctx.strokeStyle = '#28a745';
+                            ctx.lineWidth = 2;
+                            ctx.strokeRect(...scaledBbox);
+                        }
+                    });
+                }
+                requestAnimationFrame(() => drawBoxesLoop(canvas, videoElement, dir, slot));
+            }
+
+            async function detectAndDrawOnImage(imageElement, canvas, dir, slot) {
+                const ctx = canvas.getContext('2d');
+                canvas.width = imageElement.clientWidth;
+                canvas.height = imageElement.clientHeight;
+                ctx.drawImage(imageElement, 0, 0, canvas.width, canvas.height);
+
+                const formData = new FormData();
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = imageElement.naturalWidth;
+                tempCanvas.height = imageElement.naturalHeight;
+                tempCanvas.getContext('2d').drawImage(imageElement, 0, 0);
+                
+                tempCanvas.toBlob(async function(blob) {
+                    if (!blob) return;
+                    formData.append('image', blob, 'image.jpg');
+                    try {
+                        const response = await fetch(YOLO_API_ENDPOINT, { 
+                            method: 'POST', 
+                            headers: { 'ngrok-skip-browser-warning': 'true' },
+                            body: formData 
+                        });
+                        if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+                        const predictions = await response.json();
+                        
+                        let vehicleCount = 0;
+                        predictions.forEach(prediction => {
+                            if (vehicleClasses.includes(prediction.class.toLowerCase())) {
+                                vehicleCount++;
+                                const bbox = prediction.bbox;
+                                const scaleX = canvas.width / imageElement.naturalWidth;
+                                const scaleY = canvas.height / imageElement.naturalHeight;
+                                const scaledBbox = [bbox[0] * scaleX, bbox[1] * scaleY, bbox[2] * scaleX, bbox[3] * scaleY];
+                                ctx.strokeStyle = '#4a90e2';
+                                ctx.lineWidth = 2;
+                                ctx.strokeRect(...scaledBbox);
+                            }
+                        });
+                        individualCounts[dir][slot] = vehicleCount;
+                        modelStatusEl.innerHTML = `<i class="fas fa-check-circle mr-2"></i>Berhasil terhubung ke server YOLO.`;
+                        modelStatusEl.className = 'text-center text-sm text-green-600 mb-2 break-all px-4';
+
+                    } catch (error) {
+                        console.error('Error calling YOLO API:', error);
+                        modelStatusEl.innerHTML = `<i class="fas fa-exclamation-triangle mr-2"></i>Koneksi Gagal! Pastikan URL ngrok di file HTML sama dengan URL di Colab.`;
+                        modelStatusEl.className = 'text-center text-sm text-red-600 mb-2 break-all px-4';
+                        individualCounts[dir][slot] = 0;
+                    }
+                }, 'image/jpeg');
+            }
+
+            // --- PERBAIKAN LOGIKA SINKRONISASI MOBIL ---
+            function syncSimCarsWithDetection() {
+                const directions = ['n', 's', 'e', 'w'];
+                const slots = [1, 2, 3];
+                const totalCounts = {};
+                const containerSize = container.offsetWidth;
+                const intersectionCenter = containerSize / 2;
+
+                directions.forEach(dir => {
+                    let totalForDir = 0;
+                    slots.forEach(slot => {
+                        totalForDir += individualCounts[dir][slot] || 0;
+                    });
+                    totalCounts[dir] = totalForDir;
+                    document.getElementById(`vehicle-count-${dir}`).textContent = totalForDir;
+                });
+
+                for (const dir in totalCounts) {
+                    const targetCount = totalCounts[dir];
                     
-                    if (currentCount < targetCount) {
-                        for (let i = 0; i < targetCount - currentCount; i++) {
-                            createCar(dir, Math.floor(Math.random() * 2));
+                    // Hitung hanya mobil yang sedang mendekat atau berhenti di lampu merah
+                    let currentApproachingCarCount = cars.filter(c => {
+                        if (c.direction !== dir) return false;
+                        switch (c.direction) {
+                            case 'n': return c.y > intersectionCenter;
+                            case 's': return c.y < intersectionCenter;
+                            case 'w': return c.x > intersectionCenter;
+                            case 'e': return c.x < intersectionCenter;
+                            default: return false;
+                        }
+                    }).length;
+                    
+                    // Jika jumlah mobil yang antri kurang dari target, tambahkan mobil baru
+                    if (currentApproachingCarCount < targetCount) {
+                        const carsToAdd = targetCount - currentApproachingCarCount;
+                        for (let i = 0; i < carsToAdd; i++) {
+                            createCar(dir, Math.floor(Math.random() * 3));
                         }
                     }
                 }
             }
+
 
             function updateLights() {
                 if (isSwitching) {
@@ -570,8 +677,8 @@
             function isIntersectionClear(directionToCheck) {
                 const containerSize = container.offsetWidth;
                 const intersectionZone = {
-                    x1: containerSize / 2 - 140, x2: containerSize / 2 + 140,
-                    y1: containerSize / 2 - 140, y2: containerSize / 2 + 140,
+                    x1: containerSize / 2 - 210, x2: containerSize / 2 + 210,
+                    y1: containerSize / 2 - 210, y2: containerSize / 2 + 210,
                 };
                 for (const car of cars) {
                     const carDirectionIsNS = car.direction === 'n' || car.direction === 's';
@@ -586,40 +693,52 @@
             }
 
             function switchLights() {
+                if (isSwitching) return;
                 const YELLOW_LIGHT_DURATION = 2000;
-                const BASE_GREEN_LIGHT_DURATION = 5000;
-                const EXTRA_GREEN_PER_CAR = 300;
                 const directionThatWasGreen = currentGreenDirection;
                 isSwitching = true;
                 updateLights();
 
                 setTimeout(() => {
-                    isSwitching = false;
                     currentGreenDirection = 'ALL_RED';
                     updateLights();
 
-                    const checkClearInterval = setInterval(() => {
+                    let checkClearInterval = null;
+                    const failsafeTimeout = setTimeout(() => {
+                        console.warn("FAILSAFE: Intersection clear check timed out. Forcing light switch.");
+                        clearInterval(checkClearInterval);
+                        proceedToNextGreen();
+                    }, 5000); 
+
+                    const proceedToNextGreen = () => {
+                        clearTimeout(failsafeTimeout);
+                        aiDecisionEl.textContent = `Persimpangan bersih. Memberi jeda keamanan...`;
+                        
+                        setTimeout(() => {
+                            isSwitching = false;
+                            const BASE_GREEN_LIGHT_DURATION = 5000;
+                            const EXTRA_GREEN_PER_CAR = 300;
+                            currentGreenDirection = (directionThatWasGreen === 'NS') ? 'WE' : 'NS';
+                            updateLights();
+                            const waitingCars = countWaitingCars(currentGreenDirection);
+                            const greenDuration = BASE_GREEN_LIGHT_DURATION + (waitingCars * EXTRA_GREEN_PER_CAR);
+                            aiDecisionEl.textContent = `Lampu hijau untuk ${currentGreenDirection} selama ${(greenDuration / 1000).toFixed(1)} dtk.`;
+                            setTimeout(aiDecisionMaker, greenDuration);
+                        }, ALL_RED_PAUSE_DURATION);
+                    };
+
+                    checkClearInterval = setInterval(() => {
                         if (isIntersectionClear(directionThatWasGreen)) {
                             clearInterval(checkClearInterval);
-                            
-                            aiDecisionEl.textContent = `Persimpangan bersih. Memberi jeda keamanan...`;
-                            
-                            setTimeout(() => {
-                                currentGreenDirection = (directionThatWasGreen === 'NS') ? 'WE' : 'NS';
-                                updateLights();
-                                const waitingCars = countWaitingCars(currentGreenDirection);
-                                const greenDuration = BASE_GREEN_LIGHT_DURATION + (waitingCars * EXTRA_GREEN_PER_CAR);
-                                aiDecisionEl.textContent = `Lampu hijau untuk ${currentGreenDirection} selama ${(greenDuration / 1000).toFixed(1)} dtk.`;
-                                setTimeout(aiDecisionMaker, greenDuration);
-                            }, ALL_RED_PAUSE_DURATION);
+                            proceedToNextGreen();
                         }
                     }, 100);
                 }, YELLOW_LIGHT_DURATION);
             }
 
             function aiDecisionMaker() {
+                if (isSwitching) return;
                 const AI_DECISION_INTERVAL = 5000;
-                if (isSwitching || currentGreenDirection === 'ALL_RED') return;
                 
                 const nsWaiting = countWaitingCars('NS');
                 const weWaiting = countWaitingCars('WE');
@@ -652,39 +771,56 @@
                     ctx.fillStyle = '#212529';
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
                     
-                    // PERBAIKAN: Menukar logika penggambaran untuk CCTV Utara dan Selatan
                     let directionToFilter = dir;
-                    if (dir === 'n') {
-                        directionToFilter = 's'; // CCTV Utara (U) menampilkan mobil dari arah 's' (atas)
-                    } else if (dir === 's') {
-                        directionToFilter = 'n'; // CCTV Selatan (S) menampilkan mobil dari arah 'n' (bawah)
-                    }
+                    // --- PERBAIKAN LOGIKA CCTV ---
+                    if (dir === 'n') directionToFilter = 's'; 
+                    else if (dir === 's') directionToFilter = 'n'; 
+                    else if (dir === 'e') directionToFilter = 'w';
+                    else if (dir === 'w') directionToFilter = 'e';
 
                     let detectedCount = 0;
                     cars.filter(c => c.direction === directionToFilter).forEach(car => {
                         detectedCount++;
                         let x, y, w = 12, h = 20;
                         
-                        // Gunakan 'dir' asli untuk menentukan orientasi gambar di canvas
                         if(dir === 'n' || dir === 's') { 
-                            x = canvas.width / 2 - w/2 + (car.lane === 0 ? -15 : 15);
+                            let laneOffsetCctv = (car.lane === 0) ? -25 : (car.lane === 1 ? 0 : 25);
+                            x = canvas.width / 2 - w/2 + laneOffsetCctv;
                             y = (car.y / container.offsetHeight) * canvas.height;
                         } else {
-                            y = canvas.height / 2 - w/2 + (car.lane === 0 ? -15 : 15);
+                            let laneOffsetCctv = (car.lane === 0) ? -25 : (car.lane === 1 ? 0 : 25);
+                            y = canvas.height / 2 - w/2 + laneOffsetCctv;
                             x = (car.x / container.offsetWidth) * canvas.width;
                             [w,h] = [h,w];
                         }
                         ctx.fillStyle = car.color;
                         ctx.fillRect(x, y, w, h);
                     });
-                    if (cctvCounts[dir]) {
-                        cctvCounts[dir].textContent = detectedCount;
-                    }
+                    if (cctvCounts[dir]) cctvCounts[dir].textContent = detectedCount;
                 });
             }
 
             function gameLoop() {
-                moveCars();
+                const carsByDirection = {
+                    n: { 0: [], 1: [], 2: [] }, s: { 0: [], 1: [], 2: [] },
+                    e: { 0: [], 1: [], 2: [] }, w: { 0: [], 1: [], 2: [] }
+                };
+                for (const car of cars) {
+                    carsByDirection[car.direction][car.lane].push(car);
+                }
+                for (const dir in carsByDirection) {
+                    for (const lane in carsByDirection[dir]) {
+                        const laneCars = carsByDirection[dir][lane];
+                        // PENYEMPURNAAN: Pengurutan mobil untuk semua arah diperbaiki
+                        if (dir === 's' || dir === 'e') {
+                            laneCars.sort((a, b) => (dir === 's' ? a.y - b.y : a.x - b.x));
+                        } else { // n, w
+                            laneCars.sort((a, b) => (dir === 'n' ? b.y - a.y : b.x - a.x));
+                        }
+                    }
+                }
+
+                moveCars(carsByDirection);
                 drawCctvFeeds();
                 requestAnimationFrame(gameLoop);
             }
@@ -696,7 +832,14 @@
 
             // --- INITIALIZATION ---
             function init() {
-                ['n','s','e','w'].forEach(setupMediaDetection);
+                const directions = ['n', 's', 'e', 'w'];
+                const slots = [1, 2, 3];
+
+                directions.forEach(dir => {
+                    slots.forEach(slot => {
+                        setupMediaDetection(dir, slot);
+                    });
+                });
                 
                 setInterval(syncSimCarsWithDetection, 2000); 
                 
@@ -708,10 +851,31 @@
                 });
 
                 zoomOutBtn.addEventListener('click', () => {
-                    zoomLevel = Math.max(0.4, zoomLevel - 0.1); 
+                    zoomLevel = Math.max(0.2, zoomLevel - 0.1); 
                     updateZoom();
                 });
 
+                testConnectionBtn.addEventListener('click', async () => {
+                    const baseUrl = YOLO_API_ENDPOINT.replace('/api/detect', '');
+                    modelStatusEl.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Menghubungi server...`;
+                    modelStatusEl.className = 'text-center text-sm text-gray-500 mb-2 break-all px-4';
+                    try {
+                        const response = await fetch(baseUrl, { headers: { 'ngrok-skip-browser-warning': 'true' } });
+                        if (response.ok) {
+                            const text = await response.text();
+                            modelStatusEl.innerHTML = `<i class="fas fa-check-circle mr-2"></i>Berhasil! Server merespon: "${text}"`;
+                            modelStatusEl.className = 'text-center text-sm text-green-600 mb-2 break-all px-4';
+                        } else {
+                            throw new Error(`Server merespon dengan status ${response.status}`);
+                        }
+                    } catch (error) {
+                        console.error('Test Connection Error:', error);
+                        modelStatusEl.innerHTML = `<i class="fas fa-exclamation-triangle mr-2"></i>Koneksi Gagal! Pastikan server di Colab berjalan dan URL sudah benar.`;
+                        modelStatusEl.className = 'text-center text-sm text-red-600 mb-2 break-all px-4';
+                    }
+                });
+
+                updateZoom();
                 gameLoop();
                 updateLights();
                 const BASE_GREEN_LIGHT_DURATION = 5000;
