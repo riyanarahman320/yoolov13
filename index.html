@@ -180,7 +180,7 @@
                         <h2 class="text-xl font-bold text-center text-gray-700">Hitung Kendaraan (YOLO API)</h2>
                         <button id="test-connection-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold py-1 px-3 rounded-lg">Tes Koneksi</button>
                     </div>
-                    <p id="model-status" class="text-center text-sm text-gray-500 mb-2 break-all px-4"><i class="fas fa-server"></i> Server: `https://b853cc63b626.ngrok-free.app`</p>
+                    <p id="model-status" class="text-center text-sm text-gray-500 mb-2 break-all px-4"><i class="fas fa-server"></i> Server: `https://4e39e55f872a.ngrok-free.app`</p>
                     
                     <div class="grid grid-cols-1 gap-4">
                         <!-- North Direction -->
@@ -292,6 +292,7 @@
             // --- CONFIGURATION ---
             const MAX_SPEED = 2.0;
             const SAFE_DISTANCE = 90; 
+            // --- PERHATIKAN DI SINI: Ganti URL ngrok di bawah ini ---
             const YOLO_API_ENDPOINT = 'https://4e39e55f872a.ngrok-free.app/api/detect';
             const ALL_RED_PAUSE_DURATION = 1500;
 
@@ -918,7 +919,4 @@
     </script>
 </body>
 </html>
-
-
-
 
