@@ -75,6 +75,20 @@
             background: linear-gradient(45deg, #adb5bd, #e9ecef);
             border-radius: 4px 4px 2px 2px;
         }
+        .siren {
+            position: absolute;
+            top: -4px; left: 50%;
+            transform: translateX(-50%);
+            width: 10px; height: 8px;
+            border-radius: 4px;
+            background-color: #dc3545;
+            animation: blink-siren 0.5s infinite;
+        }
+         @keyframes blink-siren {
+            0%, 100% { background-color: #dc3545; box-shadow: 0 0 8px #ff0000; }
+            50% { background-color: #007bff; box-shadow: 0 0 8px #0000ff; }
+        }
+
 
         #light-n { top: calc(50% - 210px - 40px); left: calc(50% + 10px); }
         #light-s { bottom: calc(50% - 210px - 40px); left: calc(50% - 40px); transform: rotate(180deg); }
@@ -164,10 +178,11 @@
                 <!-- Dashboard -->
                 <div class="w-full p-5 bg-white rounded-xl shadow-lg">
                     <h2 class="text-xl font-bold mb-4 text-center text-gray-700">Dasbor Kontrol AI</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
                         <div><h3 class="font-semibold text-gray-500"><i class="fas fa-traffic-light mr-1"></i>Status Lampu</h3><p id="status-text" class="text-2xl font-bold">-</p></div>
                         <div><h3 class="font-semibold text-gray-500"><i class="fas fa-arrows-alt-v mr-1"></i>Kepadatan U-S</h3><p id="ns-count" class="text-2xl font-bold">0</p></div>
                         <div><h3 class="font-semibold text-gray-500"><i class="fas fa-arrows-alt-h mr-1"></i>Kepadatan B-T</h3><p id="we-count" class="text-2xl font-bold">0</p></div>
+                        <div><h3 class="font-semibold text-gray-500 text-red-500"><i class="fas fa-ambulance mr-1"></i>Darurat</h3><p id="emergency-status" class="text-2xl font-bold text-red-500">Aman</p></div>
                     </div>
                     <div class="mt-4 text-center border-t pt-3">
                         <p id="ai-decision" class="text-sm text-gray-500 italic">AI sedang menganalisis data real-time...</p>
@@ -180,7 +195,7 @@
                         <h2 class="text-xl font-bold text-center text-gray-700">Hitung Kendaraan (YOLO API)</h2>
                         <button id="test-connection-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold py-1 px-3 rounded-lg">Tes Koneksi</button>
                     </div>
-                    <p id="model-status" class="text-center text-sm text-gray-500 mb-2 break-all px-4"><i class="fas fa-server"></i> Server: `https://b853cc63b626.ngrok-free.app`</p>
+                    <p id="model-status" class="text-center text-sm text-gray-500 mb-2 break-all px-4"><i class="fas fa-server"></i> Server: `URL_ANDA`</p>
                     
                     <div class="grid grid-cols-1 gap-4">
                         <!-- North Direction -->
@@ -292,7 +307,7 @@
             // --- CONFIGURATION ---
             const MAX_SPEED = 2.0;
             const SAFE_DISTANCE = 90; 
-            const YOLO_API_ENDPOINT = 'https://bedee55b4691.ngrok-free.app/api/detect';
+            const YOLO_API_ENDPOINT = 'https://01b64999b34b.ngrok-free.app/api/detect';
             const ALL_RED_PAUSE_DURATION = 1500;
 
             // --- DOM ELEMENTS ---
@@ -310,6 +325,7 @@
             const zoomOutBtn = document.getElementById('zoom-out-btn');
             const zoomDisplay = document.getElementById('zoom-display');
             const testConnectionBtn = document.getElementById('test-connection-btn');
+            const emergencyStatusEl = document.getElementById('emergency-status');
             
             const lights = { n: document.querySelectorAll('#light-n .light'), s: document.querySelectorAll('#light-s .light'), w: document.querySelectorAll('#light-w .light'), e: document.querySelectorAll('#light-e .light') };
             const cctvContexts = { n: document.getElementById('cctv-n').getContext('2d'), s: document.getElementById('cctv-s').getContext('2d'), w: document.getElementById('cctv-w').getContext('2d'), e: document.getElementById('cctv-e').getContext('2d') };
@@ -321,16 +337,17 @@
             let currentGreenDirection = 'NS'; 
             let isSwitching = false;
             let zoomLevel = 0.3;
+            let emergencyOverride = null; // null or { direction: 'NS'/'WE' }
 
             // --- AI & MEDIA DETECTION STATE ---
-            const vehicleClasses = ['car', 'motorcycle', 'bus', 'truck', 'mobil', 'motor'];
+            const vehicleClasses = ['car', 'motorcycle', 'bus', 'truck', 'mobil', 'motor', 'ambulance'];
             const latestPredictions = { n: {}, s: {}, e: {}, w: {} };
             const detectionIntervals = { n: {}, s: {}, e: {}, w: {} };
             const individualCounts = { n: {}, s: {}, e: {}, w: {} };
 
 
             // --- CAR LOGIC ---
-            function createCar(direction, lane) {
+            function createCar(direction, lane, isEmergency = false) {
                 const containerSize = container.offsetWidth;
                 const carWidth = 28;
                 const carHeight = 45;
@@ -344,11 +361,22 @@
 
                 const carEl = document.createElement('div');
                 const hue = Math.random() * 360;
-                carEl.style.setProperty('--car-color-light', `hsl(${hue}, 80%, 70%)`);
-                carEl.style.setProperty('--car-color-dark', `hsl(${hue}, 80%, 50%)`);
                 
-                const car = { id: carIdCounter++, el: carEl, direction: direction, lane: lane, x: 0, y: 0, speed: MAX_SPEED, stopped: false, color: `hsl(${hue}, 80%, 70%)`, rotation: 0 };
+                const car = { id: carIdCounter++, el: carEl, direction: direction, lane: lane, x: 0, y: 0, speed: MAX_SPEED, stopped: false, isEmergency: isEmergency, rotation: 0 };
                 car.el.className = 'car';
+
+                if (isEmergency) {
+                    car.el.style.setProperty('--car-color-light', '#ffffff');
+                    car.el.style.setProperty('--car-color-dark', '#e0e0e0');
+                    const sirenEl = document.createElement('div');
+                    sirenEl.className = 'siren';
+                    car.el.appendChild(sirenEl);
+                    car.color = '#ffffff';
+                } else {
+                    car.el.style.setProperty('--car-color-light', `hsl(${hue}, 80%, 70%)`);
+                    car.el.style.setProperty('--car-color-dark', `hsl(${hue}, 80%, 50%)`);
+                    car.color = `hsl(${hue}, 80%, 70%)`;
+                }
 
                 switch (direction) {
                     case 'n': car.x = containerSize / 2 + laneOffset - carWidth; car.y = containerSize + carHeight; car.rotation = 0; break; 
@@ -361,7 +389,7 @@
                 carContainer.appendChild(car.el);
             }
             
-            // --- LOGIKA PERGERAKAN MOBIL YANG DISEMPURNAKAN ---
+            // --- PERBAIKAN LOGIKA PERGERAKAN MOBIL DENGAN PRIORITAS JALUR ---
             function moveCars(carsByDirection) {
                 const containerSize = container.offsetWidth;
                 const stopLines = {
@@ -371,13 +399,22 @@
 
                 cars.forEach((car) => {
                     let closestObstacle = { distance: Infinity, speed: 0 };
-                    let targetSpeed = MAX_SPEED;
+                    let targetSpeed = car.isEmergency ? MAX_SPEED * 1.2 : MAX_SPEED;
 
                     const isNS = car.direction === 'n' || car.direction === 's';
                     const isWE = car.direction === 'w' || car.direction === 'e';
-                    const isLightRedForCar = (isNS && currentGreenDirection !== 'NS') || (isWE && currentGreenDirection !== 'WE') || currentGreenDirection === 'ALL_RED';
+                    
+                    let isLightRedForCar;
 
-                    if (isLightRedForCar) {
+                    if (emergencyOverride) {
+                        // Jika ada prioritas, jalur yang sama dengan ambulans akan hijau, yang lain merah.
+                        isLightRedForCar = !((isNS && emergencyOverride.direction === 'NS') || (isWE && emergencyOverride.direction === 'WE'));
+                    } else {
+                        // Logika normal
+                        isLightRedForCar = (isNS && currentGreenDirection !== 'NS') || (isWE && currentGreenDirection !== 'WE') || currentGreenDirection === 'ALL_RED';
+                    }
+                    
+                    if (!car.isEmergency && isLightRedForCar) {
                         let distToLight = Infinity;
                         switch (car.direction) {
                             case 'n': distToLight = car.y - stopLines.n; break;
@@ -393,7 +430,7 @@
                     
                     const carsInSameLane = carsByDirection[car.direction][car.lane];
                     const carIndexInLane = carsInSameLane.findIndex(c => c.id === car.id);
-                    const carInFront = carsInSameLane[carIndexInLane + 1]; // Mobil di depan selalu elemen berikutnya di array yang sudah diurutkan
+                    const carInFront = carsInSameLane[carIndexInLane + 1];
 
                     if (carInFront) {
                         let distToOtherCar;
@@ -403,7 +440,6 @@
                             case 'w': distToOtherCar = car.x - carInFront.x; break;
                             case 'e': distToOtherCar = carInFront.x - car.x; break;
                         }
-
                         if (distToOtherCar < closestObstacle.distance) {
                             closestObstacle.distance = distToOtherCar;
                             closestObstacle.speed = carInFront.speed;
@@ -412,13 +448,13 @@
 
                     if (closestObstacle.distance < SAFE_DISTANCE) {
                         const ratio = Math.max(0, (closestObstacle.distance - car.el.offsetHeight) / (SAFE_DISTANCE - car.el.offsetHeight));
-                        targetSpeed = MAX_SPEED * ratio;
+                        targetSpeed = Math.min(targetSpeed, MAX_SPEED * ratio);
                         if (closestObstacle.distance < SAFE_DISTANCE) {
                                 targetSpeed = Math.min(targetSpeed, closestObstacle.speed);
                         }
                     }
                     
-                    const brakingFactor = (closestObstacle.speed < 0.1 && closestObstacle.distance < SAFE_DISTANCE) ? 0.3 : 0.1;
+                    const brakingFactor = 0.1;
                     car.speed += (targetSpeed - car.speed) * brakingFactor;
                     if (car.speed < 0) car.speed = 0;
 
@@ -449,23 +485,16 @@
                 const imagePreview = document.getElementById(`image-preview-${dir}-${slot}`);
                 const canvas = document.getElementById(`media-canvas-${dir}-${slot}`);
                 
-                individualCounts[dir][slot] = 0;
+                individualCounts[dir][slot] = { total: 0, ambulance: 0 };
 
                 input.addEventListener('change', function() {
                     const file = this.files[0];
                     if (!file) return;
-
-                    if (detectionIntervals[dir][slot]) {
-                        clearInterval(detectionIntervals[dir][slot]);
-                        detectionIntervals[dir][slot] = null;
-                    }
+                    if (detectionIntervals[dir][slot]) clearInterval(detectionIntervals[dir][slot]);
 
                     latestPredictions[dir][slot] = [];
-                    videoPreview.classList.add('hidden');
-                    imagePreview.classList.add('hidden');
                     const ctx = canvas.getContext('2d');
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
                     const fileURL = URL.createObjectURL(file);
 
                     if (file.type.startsWith('video/')) {
@@ -473,7 +502,7 @@
                         videoPreview.src = fileURL;
                         videoPreview.classList.remove('hidden');
                         videoPreview.play().catch(e => console.error("Video play failed:", e));
-                    } else if (file.type.startsWith('image/')) {
+                    } else {
                         videoPreview.classList.add('hidden');
                         imagePreview.src = fileURL;
                         imagePreview.classList.remove('hidden');
@@ -488,23 +517,22 @@
                             return;
                         };
                         sendFrameToApi(videoPreview, dir, slot);
-                    }, 2500); 
+                    }, 5000); 
 
                     drawBoxesLoop(canvas, videoPreview, dir, slot);
                 });
             }
 
-            async function sendFrameToApi(videoElement, dir, slot) {
+            async function sendFrameToApi(mediaElement, dir, slot) {
                 const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = videoElement.videoWidth;
-                tempCanvas.height = videoElement.videoHeight;
-                tempCanvas.getContext('2d').drawImage(videoElement, 0, 0, tempCanvas.width, tempCanvas.height);
+                tempCanvas.width = mediaElement.videoWidth || mediaElement.naturalWidth;
+                tempCanvas.height = mediaElement.videoHeight || mediaElement.naturalHeight;
+                tempCanvas.getContext('2d').drawImage(mediaElement, 0, 0, tempCanvas.width, tempCanvas.height);
                 
                 tempCanvas.toBlob(async function(blob) {
                     if (!blob) return;
                     const formData = new FormData();
                     formData.append('image', blob, 'image.jpg');
-
                     try {
                         const response = await fetch(YOLO_API_ENDPOINT, { 
                             method: 'POST', 
@@ -515,16 +543,27 @@
                         const predictions = await response.json();
                         
                         latestPredictions[dir][slot] = predictions;
-                        individualCounts[dir][slot] = predictions.filter(p => vehicleClasses.includes(p.class.toLowerCase())).length;
-                         modelStatusEl.innerHTML = `<i class="fas fa-check-circle mr-2"></i>Berhasil terhubung ke server YOLO.`;
+                        let ambulanceCount = 0;
+                        let vehicleCount = 0;
+                        predictions.forEach(p => {
+                            const pClass = p.class.toLowerCase();
+                            if (pClass === 'ambulance') {
+                                ambulanceCount++;
+                            }
+                            if (vehicleClasses.includes(pClass)) {
+                                vehicleCount++;
+                            }
+                        });
+                        individualCounts[dir][slot] = { total: vehicleCount, ambulance: ambulanceCount };
+                        
+                        modelStatusEl.innerHTML = `<i class="fas fa-check-circle mr-2"></i>Berhasil terhubung ke server YOLO.`;
                         modelStatusEl.className = 'text-center text-sm text-green-600 mb-2 break-all px-4';
-
                     } catch (error) {
                         console.error('Error calling YOLO API:', error);
                         modelStatusEl.innerHTML = `<i class="fas fa-exclamation-triangle mr-2"></i>Koneksi Gagal! Pastikan URL ngrok di file HTML sama dengan URL di Colab.`;
                         modelStatusEl.className = 'text-center text-sm text-red-600 mb-2 break-all px-4';
                         latestPredictions[dir][slot] = [];
-                        individualCounts[dir][slot] = 0;
+                        individualCounts[dir][slot] = { total: 0, ambulance: 0 };
                     }
                 }, 'image/jpeg');
             }
@@ -544,9 +583,10 @@
 
                     predictions.forEach(prediction => {
                         if (vehicleClasses.includes(prediction.class.toLowerCase())) {
+                            const isAmbulance = prediction.class.toLowerCase() === 'ambulance';
                             const bbox = prediction.bbox;
                             const scaledBbox = [bbox[0] * scaleX, bbox[1] * scaleY, bbox[2] * scaleX, bbox[3] * scaleY];
-                            ctx.strokeStyle = '#28a745';
+                            ctx.strokeStyle = isAmbulance ? '#dc3545' : '#28a745';
                             ctx.lineWidth = 2;
                             ctx.strokeRect(...scaledBbox);
                         }
@@ -556,99 +596,88 @@
             }
 
             async function detectAndDrawOnImage(imageElement, canvas, dir, slot) {
-                const ctx = canvas.getContext('2d');
-                canvas.width = imageElement.clientWidth;
-                canvas.height = imageElement.clientHeight;
-                ctx.drawImage(imageElement, 0, 0, canvas.width, canvas.height);
+                 await sendFrameToApi(imageElement, dir, slot);
+                 const ctx = canvas.getContext('2d');
+                 canvas.width = imageElement.clientWidth;
+                 canvas.height = imageElement.clientHeight;
+                 ctx.drawImage(imageElement, 0, 0, canvas.width, canvas.height);
+                 
+                 const predictions = latestPredictions[dir][slot];
+                 if (predictions && predictions.length > 0) {
+                    const scaleX = canvas.width / imageElement.naturalWidth;
+                    const scaleY = canvas.height / imageElement.naturalHeight;
 
-                const formData = new FormData();
-                const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = imageElement.naturalWidth;
-                tempCanvas.height = imageElement.naturalHeight;
-                tempCanvas.getContext('2d').drawImage(imageElement, 0, 0);
-                
-                tempCanvas.toBlob(async function(blob) {
-                    if (!blob) return;
-                    formData.append('image', blob, 'image.jpg');
-                    try {
-                        const response = await fetch(YOLO_API_ENDPOINT, { 
-                            method: 'POST', 
-                            headers: { 'ngrok-skip-browser-warning': 'true' },
-                            body: formData 
-                        });
-                        if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
-                        const predictions = await response.json();
-                        
-                        let vehicleCount = 0;
-                        predictions.forEach(prediction => {
-                            if (vehicleClasses.includes(prediction.class.toLowerCase())) {
-                                vehicleCount++;
-                                const bbox = prediction.bbox;
-                                const scaleX = canvas.width / imageElement.naturalWidth;
-                                const scaleY = canvas.height / imageElement.naturalHeight;
-                                const scaledBbox = [bbox[0] * scaleX, bbox[1] * scaleY, bbox[2] * scaleX, bbox[3] * scaleY];
-                                ctx.strokeStyle = '#4a90e2';
-                                ctx.lineWidth = 2;
-                                ctx.strokeRect(...scaledBbox);
-                            }
-                        });
-                        individualCounts[dir][slot] = vehicleCount;
-                        modelStatusEl.innerHTML = `<i class="fas fa-check-circle mr-2"></i>Berhasil terhubung ke server YOLO.`;
-                        modelStatusEl.className = 'text-center text-sm text-green-600 mb-2 break-all px-4';
-
-                    } catch (error) {
-                        console.error('Error calling YOLO API:', error);
-                        modelStatusEl.innerHTML = `<i class="fas fa-exclamation-triangle mr-2"></i>Koneksi Gagal! Pastikan URL ngrok di file HTML sama dengan URL di Colab.`;
-                        modelStatusEl.className = 'text-center text-sm text-red-600 mb-2 break-all px-4';
-                        individualCounts[dir][slot] = 0;
-                    }
-                }, 'image/jpeg');
+                    predictions.forEach(prediction => {
+                        if (vehicleClasses.includes(prediction.class.toLowerCase())) {
+                            const isAmbulance = prediction.class.toLowerCase() === 'ambulance';
+                            const bbox = prediction.bbox;
+                            const scaledBbox = [bbox[0] * scaleX, bbox[1] * scaleY, bbox[2] * scaleX, bbox[3] * scaleY];
+                            ctx.strokeStyle = isAmbulance ? '#dc3545' : '#4a90e2';
+                            ctx.lineWidth = 2;
+                            ctx.strokeRect(...scaledBbox);
+                        }
+                    });
+                }
             }
 
-            // --- PERBAIKAN LOGIKA SINKRONISASI MOBIL ---
+            // --- SIMULATION & UI LOGIC ---
             function syncSimCarsWithDetection() {
                 const directions = ['n', 's', 'e', 'w'];
                 const slots = [1, 2, 3];
-                const totalCounts = {};
-                const containerSize = container.offsetWidth;
-                const intersectionCenter = containerSize / 2;
+                let totalAmbulances = 0;
+                let detectedAmbulanceDirection = null;
 
                 directions.forEach(dir => {
                     let totalForDir = 0;
+                    let ambulanceForDir = 0;
                     slots.forEach(slot => {
-                        totalForDir += individualCounts[dir][slot] || 0;
+                        const counts = individualCounts[dir][slot] || { total: 0, ambulance: 0 };
+                        totalForDir += counts.total;
+                        if(counts.ambulance > 0) {
+                            totalAmbulances += counts.ambulance;
+                            ambulanceForDir += counts.ambulance;
+                            detectedAmbulanceDirection = (dir === 'n' || dir === 's') ? 'NS' : 'WE';
+                        }
                     });
-                    totalCounts[dir] = totalForDir;
                     document.getElementById(`vehicle-count-${dir}`).textContent = totalForDir;
+
+                    let currentCars = cars.filter(c => c.direction === dir);
+                    let currentAmbulances = currentCars.filter(c => c.isEmergency).length;
+
+                    // Tambah mobil biasa
+                    if(currentCars.length - currentAmbulances < totalForDir - ambulanceForDir) {
+                        createCar(dir, Math.floor(Math.random() * 3), false);
+                    }
+                    // Tambah ambulans
+                    if(currentAmbulances < ambulanceForDir){
+                         createCar(dir, Math.floor(Math.random() * 3), true);
+                    }
                 });
 
-                for (const dir in totalCounts) {
-                    const targetCount = totalCounts[dir];
-                    
-                    // Hitung hanya mobil yang sedang mendekat atau berhenti di lampu merah
-                    let currentApproachingCarCount = cars.filter(c => {
-                        if (c.direction !== dir) return false;
-                        switch (c.direction) {
-                            case 'n': return c.y > intersectionCenter;
-                            case 's': return c.y < intersectionCenter;
-                            case 'w': return c.x > intersectionCenter;
-                            case 'e': return c.x < intersectionCenter;
-                            default: return false;
-                        }
-                    }).length;
-                    
-                    // Jika jumlah mobil yang antri kurang dari target, tambahkan mobil baru
-                    if (currentApproachingCarCount < targetCount) {
-                        const carsToAdd = targetCount - currentApproachingCarCount;
-                        for (let i = 0; i < carsToAdd; i++) {
-                            createCar(dir, Math.floor(Math.random() * 3));
-                        }
-                    }
+                if (totalAmbulances > 0 && (!emergencyOverride || emergencyOverride.direction !== detectedAmbulanceDirection)) {
+                    emergencyOverride = { direction: detectedAmbulanceDirection };
+                    emergencyStatusEl.textContent = `Terdeteksi!`;
+                    aiDecisionEl.textContent = `PRIORITAS DARURAT: Memberi jalan untuk ambulans di jalur ${detectedAmbulanceDirection}!`;
+                    switchLights(true); 
+                } else if (totalAmbulances === 0 && emergencyOverride) {
+                    emergencyOverride = null;
+                    emergencyStatusEl.textContent = 'Aman';
+                    aiDecisionEl.textContent = 'Situasi darurat selesai, kembali ke mode normal.';
+                    switchLights(); // Kembali ke siklus normal
                 }
             }
 
 
             function updateLights() {
+                if (emergencyOverride) {
+                    const isNSGreen = emergencyOverride.direction === 'NS';
+                    setLightActive(['n', 's'], isNSGreen ? 'green' : 'red');
+                    setLightActive(['w', 'e'], !isNSGreen ? 'green' : 'red');
+                    statusText.textContent = isNSGreen ? 'Prioritas U-S' : 'Prioritas B-T';
+                    statusText.className = `text-2xl font-bold text-red-500 animate-pulse`;
+                    return;
+                }
+
                 if (isSwitching) {
                     const directionThatWasGreen = currentGreenDirection === 'NS' ? 'WE' : 'NS';
                     setLightActive(['n', 's'], directionThatWasGreen === 'WE' ? 'yellow' : 'red');
@@ -681,6 +710,7 @@
                     y1: containerSize / 2 - 210, y2: containerSize / 2 + 210,
                 };
                 for (const car of cars) {
+                    if(car.isEmergency) continue; // Abaikan ambulans saat memeriksa
                     const carDirectionIsNS = car.direction === 'n' || car.direction === 's';
                     const carDirectionIsWE = car.direction === 'w' || car.direction === 'e';
                     if ((directionToCheck === 'NS' && carDirectionIsNS) || (directionToCheck === 'WE' && carDirectionIsWE)) {
@@ -692,11 +722,16 @@
                 return true; 
             }
 
-            function switchLights() {
-                if (isSwitching) return;
-                const YELLOW_LIGHT_DURATION = 2000;
+            function switchLights(isEmergencySwitch = false) {
+                if (isSwitching && !isEmergencySwitch) return;
+                
+                const YELLOW_LIGHT_DURATION = isEmergencySwitch ? 500 : 2000;
                 const directionThatWasGreen = currentGreenDirection;
                 isSwitching = true;
+                
+                if (emergencyOverride) {
+                    currentGreenDirection = emergencyOverride.direction === 'NS' ? 'WE' : 'NS';
+                }
                 updateLights();
 
                 setTimeout(() => {
@@ -705,17 +740,21 @@
 
                     let checkClearInterval = null;
                     const failsafeTimeout = setTimeout(() => {
-                        console.warn("FAILSAFE: Intersection clear check timed out. Forcing light switch.");
                         clearInterval(checkClearInterval);
                         proceedToNextGreen();
                     }, 5000); 
 
                     const proceedToNextGreen = () => {
                         clearTimeout(failsafeTimeout);
-                        aiDecisionEl.textContent = `Persimpangan bersih. Memberi jeda keamanan...`;
+                        if (!emergencyOverride) aiDecisionEl.textContent = `Persimpangan bersih. Memberi jeda keamanan...`;
                         
                         setTimeout(() => {
                             isSwitching = false;
+                            if (emergencyOverride) {
+                                updateLights();
+                                setTimeout(aiDecisionMaker, 5000); // Cek kembali status darurat setelah 5 dtk
+                                return;
+                            }
                             const BASE_GREEN_LIGHT_DURATION = 5000;
                             const EXTRA_GREEN_PER_CAR = 300;
                             currentGreenDirection = (directionThatWasGreen === 'NS') ? 'WE' : 'NS';
@@ -724,7 +763,7 @@
                             const greenDuration = BASE_GREEN_LIGHT_DURATION + (waitingCars * EXTRA_GREEN_PER_CAR);
                             aiDecisionEl.textContent = `Lampu hijau untuk ${currentGreenDirection} selama ${(greenDuration / 1000).toFixed(1)} dtk.`;
                             setTimeout(aiDecisionMaker, greenDuration);
-                        }, ALL_RED_PAUSE_DURATION);
+                        }, isEmergencySwitch ? 200 : ALL_RED_PAUSE_DURATION);
                     };
 
                     checkClearInterval = setInterval(() => {
@@ -738,6 +777,10 @@
 
             function aiDecisionMaker() {
                 if (isSwitching) return;
+                if(emergencyOverride) {
+                    setTimeout(aiDecisionMaker, 2000); // Jika mode darurat, cek kembali nanti
+                    return;
+                }
                 const AI_DECISION_INTERVAL = 5000;
                 
                 const nsWaiting = countWaitingCars('NS');
@@ -761,7 +804,7 @@
             }
 
             function countWaitingCars(direction) {
-                return cars.filter(car => car.stopped && ((direction === 'NS' && (car.direction === 'n' || car.direction === 's')) || (direction === 'WE' && (car.direction === 'w' || car.direction === 'e')))).length;
+                return cars.filter(car => !car.isEmergency && car.stopped && ((direction === 'NS' && (car.direction === 'n' || car.direction === 's')) || (direction === 'WE' && (car.direction === 'w' || car.direction === 'e')))).length;
             }
 
             function drawCctvFeeds() {
@@ -772,7 +815,6 @@
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
                     
                     let directionToFilter = dir;
-                    // --- PERBAIKAN LOGIKA CCTV ---
                     if (dir === 'n') directionToFilter = 's'; 
                     else if (dir === 's') directionToFilter = 'n'; 
                     else if (dir === 'e') directionToFilter = 'w';
@@ -811,7 +853,6 @@
                 for (const dir in carsByDirection) {
                     for (const lane in carsByDirection[dir]) {
                         const laneCars = carsByDirection[dir][lane];
-                        // PENYEMPURNAAN: Pengurutan mobil untuk semua arah diperbaiki
                         if (dir === 's' || dir === 'e') {
                             laneCars.sort((a, b) => (dir === 's' ? a.y - b.y : a.x - b.x));
                         } else { // n, w
@@ -918,5 +959,4 @@
     </script>
 </body>
 </html>
-
 
