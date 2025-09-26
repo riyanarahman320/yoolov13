@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simulasi: Bandung Cerdas Bergerak v5.3 (Logika Natural)</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Tambahkan Chart.js -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -23,17 +24,55 @@
             transition: transform 0.3s ease-in-out;
         }
         .road { background-color: #6c757d; position: absolute; z-index: 1; }
-        .road-h { width: 100%; height: 420px; top: 50%; transform: translateY(-50%); }
-        .road-v { height: 100%; width: 420px; left: 50%; transform: translateX(-50%); }
+        .road-h { width: 100%; height: 700px; top: 50%; transform: translateY(-50%); } /* Diperlebar untuk 4 lajur */
+        .road-v { height: 100%; width: 700px; left: 50%; transform: translateX(-50%); } /* Diperlebar untuk 4 lajur */
         
         .intersection-center {
             position: absolute;
-            width: 420px; height: 420px;
+            width: 700px; height: 700px; /* Disesuaikan */
             background-color: #6c757d;
             z-index: 2;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
+            display: none; /* Menghilangkan kotak di tengah */
         }
+        
+        .center-divider {
+            position: absolute;
+            background-color: #f8f9fa;
+            z-index: 4; /* Dinaikkan */
+        }
+        .center-divider.divider-v {
+            width: 5px;
+            height: calc(50% - 350px); /* Disesuaikan */
+        }
+
+        /* Penyesuaian Posisi Garis Utara & Selatan */
+        .center-divider.divider-v.top {
+            left: calc(50% + 5px); 
+        }
+        .center-divider.divider-v.bottom {
+            left: calc(50% - 2.5px);
+        }
+
+        .center-divider.divider-h {
+            height: 5px;
+            width: calc(50% - 350px); /* Disesuaikan */
+        }
+        
+        /* Penyesuaian Posisi Garis Barat & Timur */
+        .center-divider.divider-h.left {
+             top: calc(50% - 2.5px);
+        }
+        .center-divider.divider-h.right {
+             top: calc(50% + 50px);
+        }
+
+        .top { top: 0; }
+        .bottom { bottom: 0; }
+        .left { left: 0; }
+        .right { right: 0; }
+
         .traffic-light {
             position: absolute;
             background-color: #343a40;
@@ -50,13 +89,16 @@
             border-radius: 50%;
             background-color: #495057;
             transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .light.red { background-color: #dc3545; box-shadow: 0 0 15px #dc3545; }
         .light.yellow { background-color: #ffc107; box-shadow: 0 0 15px #ffc107; }
         .light.green { background-color: #28a745; box-shadow: 0 0 15px #28a745; }
         .light.active { opacity: 1; }
         .light:not(.active) { opacity: 0.2; box-shadow: none; }
-
+        
         .car {
             position: absolute;
             width: 28px; height: 45px;
@@ -89,11 +131,12 @@
             50% { background-color: #007bff; box-shadow: 0 0 8px #0000ff; }
         }
 
+        /* Posisi lampu di seberang persimpangan */
+        #light-n { top: calc(50% + 350px + 10px); left: calc(50% - 110px); } /* Untuk dari Selatan, digeser ke KIRI LAGI */
+        #light-s { top: calc(50% - 350px - 40px); left: calc(50% + 10px); transform: rotate(180deg); } /* Untuk dari Utara, digeser ke KANAN LAGI */
+        #light-e { top: calc(50% - 80px); left: calc(50% - 350px - 40px); transform: rotate(90deg); } /* Untuk dari Barat, digeser ke ATAS LAGI */
+        #light-w { top: calc(50% + 100px); left: calc(50% + 350px + 10px); transform: rotate(-90deg); } /* Untuk dari Timur, digeser ke BAWAH */
 
-        #light-n { top: calc(50% - 210px - 40px); left: calc(50% + 10px); }
-        #light-s { bottom: calc(50% - 210px - 40px); left: calc(50% - 40px); transform: rotate(180deg); }
-        #light-e { top: calc(50% - 40px); left: calc(50% + 210px + 10px); transform: rotate(90deg); }
-        #light-w { top: calc(50% + 10px); right: calc(50% + 210px + 10px); transform: rotate(-90deg); }
 
         .cctv-feed {
             background: #000;
@@ -141,6 +184,17 @@
             height: 100%;
             object-fit: contain;
         }
+
+        /* Compass Rose Image Container */
+        #compass-rose-container {
+            position: absolute;
+            top: 20px;
+            left: 20px; /* Diubah dari right ke left */
+            z-index: 20;
+            width: 700px; /* Ukuran diperbesar lagi */
+            height: 700px; /* Ukuran diperbesar lagi */
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -148,21 +202,36 @@
     <div class="min-h-screen flex flex-col items-center justify-center p-4">
         <!-- Header -->
         <div class="text-center mb-4">
-            <h1 class="text-4xl md:text-5xl font-extrabold text-gray-800">Bandung Cerdas Bergerak</h1>
-            <p class="text-lg md:text-xl text-gray-600 mt-1">Simulasi Lalu Lintas & Deteksi Kendaraan (YOLO API)</p>
+            <div class="flex justify-center items-center gap-4">
+                <img src="https://pusdat.upi.edu/public/images/logo-upi.png" alt="Logo UPI" class="h-16" onerror="this.onerror=null;this.src='https://placehold.co/64x64/ffffff/000000?text=UPI';">
+                <h1 class="text-4xl md:text-5xl font-extrabold text-gray-800">Bandung Cerdas Bergerak</h1>
+                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR4rnctaDhn8XBqljt4FMGUvIsoyQrb-3uNVw&s" alt="Logo" class="h-16" onerror="this.onerror=null;this.src='https://placehold.co/64x64/ffffff/000000?text=Logo';">
+            </div>
+            <p class="text-lg md:text-xl text-gray-600 mt-2">Simulasi Lalu Lintas & Deteksi Kendaraan</p>
         </div>
 
         <!-- Simulation Area -->
         <div id="viewport" class="relative w-full max-w-7xl aspect-square bg-green-100 rounded-2xl shadow-2xl overflow-hidden border-8 border-white">
             <div id="simulation-container">
+                <!-- Compass Rose Image -->
+                <div id="compass-rose-container">
+                    <img src="https://png.pngtree.com/png-clipart/20220905/ourmid/pngtree-arah-mata-angin-png-image_6138728.png" alt="Arah Mata Angin" class="w-full h-full" onerror="this.onerror=null;this.src='https://placehold.co/140x140/ffffff/000000?text=Kompas';">
+                </div>
+
                 <div class="road road-h"></div>
                 <div class="road road-v"></div>
                 <div class="intersection-center"></div>
+                <div class="center-divider divider-v top"></div>
+                <div class="center-divider divider-v bottom"></div>
+                <div class="center-divider divider-h left"></div>
+                <div class="center-divider divider-h right"></div>
                 <div id="light-n" class="traffic-light"><div class="light red"></div><div class="light yellow"></div><div class="light green"></div></div>
                 <div id="light-s" class="traffic-light"><div class="light red"></div><div class="light yellow"></div><div class="light green"></div></div>
                 <div id="light-w" class="traffic-light"><div class="light red"></div><div class="light yellow"></div><div class="light green"></div></div>
                 <div id="light-e" class="traffic-light"><div class="light red"></div><div class="light yellow"></div><div class="light green"></div></div>
                 <div id="car-container"></div>
+                <!-- Lane Numbers Removed -->
+                <div id="lane-numbers"></div>
             </div>
              <!-- Zoom Controls -->
             <div id="zoom-controls" class="absolute top-4 right-4 z-20 flex flex-col items-center gap-2">
@@ -178,11 +247,13 @@
                 <!-- Dashboard -->
                 <div class="w-full p-5 bg-white rounded-xl shadow-lg">
                     <h2 class="text-xl font-bold mb-4 text-center text-gray-700">Dasbor Kontrol AI</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
-                        <div><h3 class="font-semibold text-gray-500"><i class="fas fa-traffic-light mr-1"></i>Status Lampu</h3><p id="status-text" class="text-2xl font-bold">-</p></div>
-                        <div><h3 class="font-semibold text-gray-500"><i class="fas fa-arrows-alt-v mr-1"></i>Kepadatan U-S</h3><p id="ns-count" class="text-2xl font-bold">0</p></div>
-                        <div><h3 class="font-semibold text-gray-500"><i class="fas fa-arrows-alt-h mr-1"></i>Kepadatan B-T</h3><p id="we-count" class="text-2xl font-bold">0</p></div>
-                        <div><h3 class="font-semibold text-gray-500 text-red-500"><i class="fas fa-ambulance mr-1"></i>Darurat</h3><p id="emergency-status" class="text-2xl font-bold text-red-500">Aman</p></div>
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-center">
+                        <div><h3 class="font-semibold text-gray-500 text-sm">Fase Lampu</h3><p id="status-text" class="text-xl font-bold">-</p></div>
+                        <div><h3 class="font-semibold text-gray-500 text-sm">Antrean Utara</h3><p id="utara-count" class="text-xl font-bold">0</p></div>
+                        <div><h3 class="font-semibold text-gray-500 text-sm">Antrean Selatan</h3><p id="selatan-count" class="text-xl font-bold">0</p></div>
+                        <div><h3 class="font-semibold text-gray-500 text-red-500 text-sm">Darurat</h3><p id="emergency-status" class="text-xl font-bold text-red-500">Aman</p></div>
+                        <div><h3 class="font-semibold text-gray-500 text-sm">Antrean Barat</h3><p id="barat-count" class="text-xl font-bold">0</p></div>
+                        <div><h3 class="font-semibold text-gray-500 text-sm">Antrean Timur</h3><p id="timur-count" class="text-xl font-bold">0</p></div>
                     </div>
                     <div class="mt-4 text-center border-t pt-3">
                         <p id="ai-decision" class="text-sm text-gray-500 italic">AI sedang menganalisis data real-time...</p>
@@ -192,7 +263,7 @@
                 <!-- Vehicle Counting Section -->
                 <div class="w-full p-5 bg-white rounded-xl shadow-lg">
                     <div class="flex justify-between items-center mb-3">
-                        <h2 class="text-xl font-bold text-center text-gray-700">Hitung Kendaraan (YOLO API)</h2>
+                        <h2 class="text-xl font-bold text-center text-gray-700">Hitung Kendaraan</h2>
                         <button id="test-connection-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold py-1 px-3 rounded-lg">Tes Koneksi</button>
                     </div>
                     <p id="model-status" class="text-center text-sm text-gray-500 mb-2 break-all px-4"><i class="fas fa-server"></i> Server: `URL_ANDA`</p>
@@ -201,18 +272,18 @@
                         <!-- North Direction -->
                         <div class="border p-3 rounded-lg">
                             <h3 class="font-bold text-lg text-center text-gray-600 mb-2">Utara (Total: <span id="vehicle-count-s" class="text-indigo-600">0</span>)</h3>
-                            <div class="grid grid-cols-3 gap-3">
+                            <div class="grid grid-cols-3 gap-3"> <!-- Diubah menjadi 3 kolom -->
                                 <div class="text-center">
                                     <div class="media-preview-container"><video id="video-preview-s-1" loop muted playsinline class="hidden"></video><img id="image-preview-s-1" class="hidden" /><canvas id="media-canvas-s-1"></canvas></div>
-                                    <label for="media-input-s-1" class="media-input-label">Jalur 1</label><input type="file" id="media-input-s-1" accept="video/*,image/*" class="media-input" />
+                                    <label for="media-input-s-1" class="media-input-label">Titik 1</label><input type="file" id="media-input-s-1" accept="video/*,image/*" class="media-input" />
                                 </div>
                                 <div class="text-center">
                                     <div class="media-preview-container"><video id="video-preview-s-2" loop muted playsinline class="hidden"></video><img id="image-preview-s-2" class="hidden" /><canvas id="media-canvas-s-2"></canvas></div>
-                                    <label for="media-input-s-2" class="media-input-label">Jalur 2</label><input type="file" id="media-input-s-2" accept="video/*,image/*" class="media-input" />
+                                    <label for="media-input-s-2" class="media-input-label">Titik 2</label><input type="file" id="media-input-s-2" accept="video/*,image/*" class="media-input" />
                                 </div>
                                 <div class="text-center">
                                     <div class="media-preview-container"><video id="video-preview-s-3" loop muted playsinline class="hidden"></video><img id="image-preview-s-3" class="hidden" /><canvas id="media-canvas-s-3"></canvas></div>
-                                    <label for="media-input-s-3" class="media-input-label">Jalur 3</label><input type="file" id="media-input-s-3" accept="video/*,image/*" class="media-input" />
+                                    <label for="media-input-s-3" class="media-input-label">Titik 3</label><input type="file" id="media-input-s-3" accept="video/*,image/*" class="media-input" />
                                 </div>
                             </div>
                         </div>
@@ -220,73 +291,97 @@
                         <!-- South Direction -->
                         <div class="border p-3 rounded-lg">
                             <h3 class="font-bold text-lg text-center text-gray-600 mb-2">Selatan (Total: <span id="vehicle-count-n" class="text-indigo-600">0</span>)</h3>
-                            <div class="grid grid-cols-3 gap-3">
+                            <div class="grid grid-cols-3 gap-3"> <!-- Diubah menjadi 3 kolom -->
                                 <div class="text-center">
                                     <div class="media-preview-container"><video id="video-preview-n-1" loop muted playsinline class="hidden"></video><img id="image-preview-n-1" class="hidden" /><canvas id="media-canvas-n-1"></canvas></div>
-                                    <label for="media-input-n-1" class="media-input-label">Jalur 1</label><input type="file" id="media-input-n-1" accept="video/*,image/*" class="media-input" />
+                                    <label for="media-input-n-1" class="media-input-label">Titik 1</label><input type="file" id="media-input-n-1" accept="video/*,image/*" class="media-input" />
                                 </div>
                                 <div class="text-center">
                                     <div class="media-preview-container"><video id="video-preview-n-2" loop muted playsinline class="hidden"></video><img id="image-preview-n-2" class="hidden" /><canvas id="media-canvas-n-2"></canvas></div>
-                                    <label for="media-input-n-2" class="media-input-label">Jalur 2</label><input type="file" id="media-input-n-2" accept="video/*,image/*" class="media-input" />
+                                    <label for="media-input-n-2" class="media-input-label">Titik 2</label><input type="file" id="media-input-n-2" accept="video/*,image/*" class="media-input" />
                                 </div>
                                 <div class="text-center">
                                     <div class="media-preview-container"><video id="video-preview-n-3" loop muted playsinline class="hidden"></video><img id="image-preview-n-3" class="hidden" /><canvas id="media-canvas-n-3"></canvas></div>
-                                    <label for="media-input-n-3" class="media-input-label">Jalur 3</label><input type="file" id="media-input-n-3" accept="video/*,image/*" class="media-input" />
+                                    <label for="media-input-n-3" class="media-input-label">Titik 3</label><input type="file" id="media-input-n-3" accept="video/*,image/*" class="media-input" />
                                 </div>
                             </div>
                         </div>
 
-                        <!-- East Direction -->
+                        <!-- East Direction (from RIGHT, using 'w' logic) -->
                         <div class="border p-3 rounded-lg">
-                            <h3 class="font-bold text-lg text-center text-gray-600 mb-2">Timur (Total: <span id="vehicle-count-e" class="text-indigo-600">0</span>)</h3>
+                            <h3 class="font-bold text-lg text-center text-gray-600 mb-2">Timur (Total: <span id="vehicle-count-w" class="text-indigo-600">0</span>)</h3>
                             <div class="grid grid-cols-3 gap-3">
                                <div class="text-center">
-                                    <div class="media-preview-container"><video id="video-preview-e-1" loop muted playsinline class="hidden"></video><img id="image-preview-e-1" class="hidden" /><canvas id="media-canvas-e-1"></canvas></div>
-                                    <label for="media-input-e-1" class="media-input-label">Jalur 1</label><input type="file" id="media-input-e-1" accept="video/*,image/*" class="media-input" />
-                                </div>
-                                <div class="text-center">
-                                    <div class="media-preview-container"><video id="video-preview-e-2" loop muted playsinline class="hidden"></video><img id="image-preview-e-2" class="hidden" /><canvas id="media-canvas-e-2"></canvas></div>
-                                    <label for="media-input-e-2" class="media-input-label">Jalur 2</label><input type="file" id="media-input-e-2" accept="video/*,image/*" class="media-input" />
-                                </div>
-                                <div class="text-center">
-                                    <div class="media-preview-container"><video id="video-preview-e-3" loop muted playsinline class="hidden"></video><img id="image-preview-e-3" class="hidden" /><canvas id="media-canvas-e-3"></canvas></div>
-                                    <label for="media-input-e-3" class="media-input-label">Jalur 3</label><input type="file" id="media-input-e-3" accept="video/*,image/*" class="media-input" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- West Direction -->
-                        <div class="border p-3 rounded-lg">
-                            <h3 class="font-bold text-lg text-center text-gray-600 mb-2">Barat (Total: <span id="vehicle-count-w" class="text-indigo-600">0</span>)</h3>
-                            <div class="grid grid-cols-3 gap-3">
-                                <div class="text-center">
                                     <div class="media-preview-container"><video id="video-preview-w-1" loop muted playsinline class="hidden"></video><img id="image-preview-w-1" class="hidden" /><canvas id="media-canvas-w-1"></canvas></div>
-                                    <label for="media-input-w-1" class="media-input-label">Jalur 1</label><input type="file" id="media-input-w-1" accept="video/*,image/*" class="media-input" />
+                                    <label for="media-input-w-1" class="media-input-label">Titik 1</label><input type="file" id="media-input-w-1" accept="video/*,image/*" class="media-input" />
                                 </div>
                                 <div class="text-center">
                                     <div class="media-preview-container"><video id="video-preview-w-2" loop muted playsinline class="hidden"></video><img id="image-preview-w-2" class="hidden" /><canvas id="media-canvas-w-2"></canvas></div>
-                                    <label for="media-input-w-2" class="media-input-label">Jalur 2</label><input type="file" id="media-input-w-2" accept="video/*,image/*" class="media-input" />
+                                    <label for="media-input-w-2" class="media-input-label">Titik 2</label><input type="file" id="media-input-w-2" accept="video/*,image/*" class="media-input" />
                                 </div>
                                 <div class="text-center">
                                     <div class="media-preview-container"><video id="video-preview-w-3" loop muted playsinline class="hidden"></video><img id="image-preview-w-3" class="hidden" /><canvas id="media-canvas-w-3"></canvas></div>
-                                    <label for="media-input-w-3" class="media-input-label">Jalur 3</label><input type="file" id="media-input-w-3" accept="video/*,image/*" class="media-input" />
+                                    <label for="media-input-w-3" class="media-input-label">Titik 3</label><input type="file" id="media-input-w-3" accept="video/*,image/*" class="media-input" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- West Direction (from LEFT, using 'e' logic) -->
+                        <div class="border p-3 rounded-lg">
+                            <h3 class="font-bold text-lg text-center text-gray-600 mb-2">Barat (Total: <span id="vehicle-count-e" class="text-indigo-600">0</span>)</h3>
+                            <div class="grid grid-cols-3 gap-3">
+                                <div class="text-center">
+                                    <div class="media-preview-container"><video id="video-preview-e-1" loop muted playsinline class="hidden"></video><img id="image-preview-e-1" class="hidden" /><canvas id="media-canvas-e-1"></canvas></div>
+                                    <label for="media-input-e-1" class="media-input-label">Titik 1</label><input type="file" id="media-input-e-1" accept="video/*,image/*" class="media-input" />
+                                </div>
+                                <div class="text-center">
+                                    <div class="media-preview-container"><video id="video-preview-e-2" loop muted playsinline class="hidden"></video><img id="image-preview-e-2" class="hidden" /><canvas id="media-canvas-e-2"></canvas></div>
+                                    <label for="media-input-e-2" class="media-input-label">Titik 2</label><input type="file" id="media-input-e-2" accept="video/*,image/*" class="media-input" />
+                                </div>
+                                <div class="text-center">
+                                    <div class="media-preview-container"><video id="video-preview-e-3" loop muted playsinline class="hidden"></video><img id="image-preview-e-3" class="hidden" /><canvas id="media-canvas-e-3"></canvas></div>
+                                    <label for="media-input-e-3" class="media-input-label">Titik 3</label><input type="file" id="media-input-e-3" accept="video/*,image/*" class="media-input" />
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <!-- Right Column: Gemini & CCTV -->
+            <!-- Right Column: Data Kemacetan & CCTV -->
             <div class="lg:col-span-2 flex flex-col gap-6">
-                <!-- Gemini API Feature Section -->
-                <div class="w-full p-5 bg-white rounded-xl shadow-lg text-center">
-                     <h3 class="text-xl font-bold text-blue-600 mb-3">AI Prediktif Gemini</h3>
-                     <button id="gemini-predict-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-5 rounded-lg transition-all duration-300 disabled:bg-gray-400 w-full shadow hover:shadow-lg">
-                         <i class="fas fa-star mr-2"></i>Dapatkan Analisis Prediktif
-                     </button>
-                     <div id="gemini-result-container" class="mt-3 p-3 bg-gray-50 rounded-lg text-left min-h-[100px] hidden">
-                         <p id="gemini-prediction-result" class="text-sm text-gray-700"></p>
-                     </div>
+                <!-- Traffic Data Section -->
+                <div class="w-full p-5 bg-white rounded-xl shadow-lg">
+                    <h3 class="text-xl font-bold text-blue-600 mb-3 text-center">Analisis Data Kemacetan</h3>
+                    <div class="grid grid-cols-2 gap-3 items-end">
+                        <div>
+                            <label for="day-select" class="text-sm font-medium text-gray-700">Hari</label>
+                            <select id="day-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                                <option>Senin</option>
+                                <option>Selasa</option>
+                                <option>Rabu</option>
+                                <option>Kamis</option>
+                                <option>Jumat</option>
+                                <option>Sabtu</option>
+                                <option>Minggu</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="time-select" class="text-sm font-medium text-gray-700">Waktu</label>
+                            <select id="time-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                                <option>Pagi (07:00-09:00)</option>
+                                <option>Siang (12:00-14:00)</option>
+                                <option>Sore (16:00-18:00)</option>
+                                <option>Malam (19:00-21:00)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button id="analyze-traffic-btn" class="mt-3 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 shadow hover:shadow-lg">
+                        Analisis Manual
+                    </button>
+                    <div id="traffic-result-container" class="mt-3 p-3 bg-gray-50 rounded-lg text-center min-h-[50px]">
+                        <p id="traffic-prediction-result" class="text-sm text-gray-700 mb-4"></p>
+                        <canvas id="traffic-chart"></canvas>
+                    </div>
                 </div>
                 <!-- CCTV Feeds -->
                 <div class="w-full p-5 bg-white rounded-xl shadow-lg">
@@ -307,37 +402,57 @@
             // --- CONFIGURATION ---
             const MAX_SPEED = 2.0;
             const SAFE_DISTANCE = 90; 
-            const YOLO_API_ENDPOINT = 'https://360db0acfc80.ngrok-free.app/api/detect';
-            const ALL_RED_PAUSE_DURATION = 1500;
+            const YOLO_API_ENDPOINT = 'https://lochlan-inconsecutively-inviolately.ngrok-free.dev/api/detect';
+            const ALL_RED_PAUSE_DURATION = 3500; // Jeda keamanan diperpanjang menjadi 3.5 detik
 
             // --- DOM ELEMENTS ---
             const container = document.getElementById('simulation-container');
             const carContainer = document.getElementById('car-container');
             const statusText = document.getElementById('status-text');
-            const nsCountEl = document.getElementById('ns-count');
-            const weCountEl = document.getElementById('we-count');
+            const utaraCountEl = document.getElementById('utara-count');
+            const selatanCountEl = document.getElementById('selatan-count');
+            const timurCountEl = document.getElementById('timur-count');
+            const baratCountEl = document.getElementById('barat-count');
             const aiDecisionEl = document.getElementById('ai-decision');
-            const geminiBtn = document.getElementById('gemini-predict-btn');
-            const geminiResultContainer = document.getElementById('gemini-result-container');
-            const geminiResultText = document.getElementById('gemini-prediction-result');
+            const analyzeTrafficBtn = document.getElementById('analyze-traffic-btn');
+            const trafficResultContainer = document.getElementById('traffic-result-container');
+            const trafficResultText = document.getElementById('traffic-prediction-result');
+            const daySelect = document.getElementById('day-select');
+            const timeSelect = document.getElementById('time-select');
             const modelStatusEl = document.getElementById('model-status');
             const zoomInBtn = document.getElementById('zoom-in-btn');
             const zoomOutBtn = document.getElementById('zoom-out-btn');
             const zoomDisplay = document.getElementById('zoom-display');
             const testConnectionBtn = document.getElementById('test-connection-btn');
             const emergencyStatusEl = document.getElementById('emergency-status');
+            const trafficChartCanvas = document.getElementById('traffic-chart');
             
-            const lights = { n: document.querySelectorAll('#light-n .light'), s: document.querySelectorAll('#light-s .light'), w: document.querySelectorAll('#light-w .light'), e: document.querySelectorAll('#light-e .light') };
+            const lights = { 
+                n: document.querySelectorAll('#light-n .light'), 
+                s: document.querySelectorAll('#light-s .light'), 
+                w: document.querySelectorAll('#light-w .light'), 
+                e: document.querySelectorAll('#light-e .light') 
+            };
             const cctvContexts = { n: document.getElementById('cctv-n').getContext('2d'), s: document.getElementById('cctv-s').getContext('2d'), w: document.getElementById('cctv-w').getContext('2d'), e: document.getElementById('cctv-e').getContext('2d') };
             const cctvCounts = { n: document.getElementById('cctv-n-count'), s: document.getElementById('cctv-s-count'), w: document.getElementById('cctv-w-count'), e: document.getElementById('cctv-e-count') };
 
             // --- STATE ---
             let cars = [];
             let carIdCounter = 0;
-            let currentGreenDirection = 'NS'; 
             let isSwitching = false;
             let zoomLevel = 0.3;
-            let emergencyOverride = null; // null or { direction: 'NS'/'WE' }
+            let emergencyOverride = null;
+            let trafficChart = null;
+            // State Fase Lalu Lintas
+            const phaseSequence = ['E_GREEN', 'W_GREEN', 'N_GREEN', 'S_GREEN'];
+            let phaseIndex = 0;
+            let currentPhase = phaseSequence[phaseIndex];
+            
+            // --- STATE for Advanced AI ---
+            let greenPhaseTimer = null;
+            let intersectionClearCheckInterval = null;
+            const MINIMUM_GREEN_TIME = 3000; // Durasi hijau minimum 3 detik
+            const MAX_GREEN_TIME = 20000; // Durasi hijau maksimum 20 detik
 
             // --- AI & MEDIA DETECTION STATE ---
             const vehicleClasses = ['car', 'motorcycle', 'bus', 'truck', 'mobil', 'motor', 'ambulance'];
@@ -352,17 +467,30 @@
                 const carWidth = 28;
                 const carHeight = 45;
                 let laneOffset;
+                // Kalkulasi offset untuk 4 lajur
                 switch(lane) {
-                    case 0: laneOffset = 45; break;
-                    case 1: laneOffset = 105; break;
-                    case 2: laneOffset = 165; break;
-                    default: laneOffset = 105;
+                    case 0: laneOffset = 80;  break; 
+                    case 1: laneOffset = 150; break;
+                    case 2: laneOffset = 220; break;
+                    case 3: laneOffset = 290; break;
+                    default: laneOffset = 150;
                 }
 
                 const carEl = document.createElement('div');
                 const hue = Math.random() * 360;
                 
-                const car = { id: carIdCounter++, el: carEl, direction: direction, lane: lane, x: 0, y: 0, speed: MAX_SPEED, stopped: false, isEmergency: isEmergency, rotation: 0 };
+                const car = { 
+                    id: carIdCounter++, el: carEl, direction: direction, 
+                    lane: lane, x: 0, y: 0, speed: MAX_SPEED, 
+                    stopped: false, isEmergency: isEmergency, rotation: 0, 
+                    turnDirection: 'straight'
+                };
+                
+                // Lajur 0 adalah lajur khusus belok
+                if (lane === 0) {
+                    car.turnDirection = 'left';
+                }
+
                 car.el.className = 'car';
 
                 if (isEmergency) {
@@ -379,8 +507,8 @@
                 }
 
                 switch (direction) {
-                    case 'n': car.x = containerSize / 2 + laneOffset - carWidth; car.y = containerSize + carHeight; car.rotation = 0; break; 
-                    case 's': car.x = containerSize / 2 - laneOffset; car.y = -carHeight; car.rotation = 180; break; 
+                    case 'n': car.x = containerSize / 2 - laneOffset; car.y = containerSize + carHeight; car.rotation = 0; break; 
+                    case 's': car.x = containerSize / 2 + laneOffset - carWidth; car.y = -carHeight; car.rotation = 180; break; 
                     case 'w': car.x = containerSize + carHeight; car.y = containerSize / 2 + laneOffset - carWidth; car.rotation = -90; break;
                     case 'e': car.x = -carHeight; car.y = containerSize / 2 - laneOffset; car.rotation = 90; break;
                 }
@@ -389,29 +517,34 @@
                 carContainer.appendChild(car.el);
             }
             
-            // --- PERBAIKAN LOGIKA PERGERAKAN MOBIL DENGAN PRIORITAS JALUR ---
             function moveCars(carsByDirection) {
                 const containerSize = container.offsetWidth;
+                const centerX = containerSize / 2;
+                const centerY = containerSize / 2;
                 const stopLines = {
-                    n: containerSize / 2 + 210, s: containerSize / 2 - 210,
-                    w: containerSize / 2 + 210, e: containerSize / 2 - 210
+                    n: containerSize / 2 + 350, s: containerSize / 2 - 350,
+                    w: containerSize / 2 + 350, e: containerSize / 2 - 350
                 };
 
                 cars.forEach((car) => {
                     let closestObstacle = { distance: Infinity, speed: 0 };
-                    let targetSpeed = car.isEmergency ? MAX_SPEED * 1.2 : MAX_SPEED;
+                    let targetSpeed = car.isEmergency ? MAX_SPEED * 1.5 : MAX_SPEED;
 
-                    const isNS = car.direction === 'n' || car.direction === 's';
-                    const isWE = car.direction === 'w' || car.direction === 'e';
-                    
-                    let isLightRedForCar;
-
+                    let isLightRedForCar = true; // Default merah
                     if (emergencyOverride) {
-                        // Jika ada prioritas, jalur yang sama dengan ambulans akan hijau, yang lain merah.
-                        isLightRedForCar = !((isNS && emergencyOverride.direction === 'NS') || (isWE && emergencyOverride.direction === 'WE'));
+                        // Dalam mode darurat, lampu hijau HANYA untuk arah spesifik ambulans
+                        const ambulanceDir = emergencyOverride.direction;
+                        if (car.direction === ambulanceDir) {
+                             isLightRedForCar = false;
+                        }
                     } else {
-                        // Logika normal
-                        isLightRedForCar = (isNS && currentGreenDirection !== 'NS') || (isWE && currentGreenDirection !== 'WE') || currentGreenDirection === 'ALL_RED';
+                        // Logika lampu normal
+                        if ((car.direction === 'e' && currentPhase === 'E_GREEN') ||
+                            (car.direction === 'w' && currentPhase === 'W_GREEN') ||
+                            (car.direction === 'n' && currentPhase === 'N_GREEN') ||
+                            (car.direction === 's' && currentPhase === 'S_GREEN')) {
+                            isLightRedForCar = false;
+                        }
                     }
                     
                     if (!car.isEmergency && isLightRedForCar) {
@@ -427,8 +560,8 @@
                             closestObstacle.speed = 0;
                         }
                     }
-                    
-                    const carsInSameLane = carsByDirection[car.direction][car.lane];
+
+                    const carsInSameLane = carsByDirection[car.direction] ? carsByDirection[car.direction][car.lane] : [];
                     const carIndexInLane = carsInSameLane.findIndex(c => c.id === car.id);
                     const carInFront = carsInSameLane[carIndexInLane + 1];
 
@@ -448,22 +581,117 @@
 
                     if (closestObstacle.distance < SAFE_DISTANCE) {
                         const ratio = Math.max(0, (closestObstacle.distance - car.el.offsetHeight) / (SAFE_DISTANCE - car.el.offsetHeight));
-                        targetSpeed = Math.min(targetSpeed, MAX_SPEED * ratio);
-                        if (closestObstacle.distance < SAFE_DISTANCE) {
-                                targetSpeed = Math.min(targetSpeed, closestObstacle.speed);
+                        targetSpeed = Math.min(targetSpeed, MAX_SPEED * ratio, closestObstacle.speed);
+                    }
+
+                    const accelFactor = 0.05;
+                    car.speed += (targetSpeed - car.speed) * accelFactor;
+                    if (car.speed < 0.01) car.speed = 0;
+
+                    let handledByTurnLogic = false;
+                    const turnRate = 2.5; 
+                    const turnSpeedFactor = 1.0;
+                    
+                    const intersectionBoundary = 350;
+                    const wideTurnMargin = 320; // Dibuat lebih lebar lagi
+                    const extraWideTurnMargin = 340; // Dibuat sangat lebar
+                    
+                    const turnTriggerS = centerY + intersectionBoundary - wideTurnMargin;
+                    const turnTriggerN = centerY - intersectionBoundary + extraWideTurnMargin;
+                    const turnTriggerE = centerX + intersectionBoundary - extraWideTurnMargin;
+                    const turnTriggerW = centerX - intersectionBoundary + wideTurnMargin;
+                    
+                    const hasEnteredIntersectionN = car.y < stopLines.n;
+                    const hasEnteredIntersectionS = car.y > stopLines.s;
+                    const hasEnteredIntersectionW = car.x < stopLines.w;
+                    const hasEnteredIntersectionE = car.x > stopLines.e;
+                    
+                    
+                    if (car.direction === 'n' && car.turnDirection === 'left' && hasEnteredIntersectionN) { 
+                        handledByTurnLogic = true;
+                        if (car.y > turnTriggerS) {
+                            car.y -= car.speed;
+                        } else {
+                            if (car.rotation < 90) {
+                                car.rotation = Math.min(90, car.rotation + turnRate);
+                            }
+                             const angleRad = (car.rotation * Math.PI) / 180;
+                            car.x += car.speed * Math.sin(angleRad) * turnSpeedFactor;
+                            car.y -= car.speed * Math.cos(angleRad) * turnSpeedFactor;
+                            if(car.rotation === 90) {
+                                 car.direction = 'e'; 
+                                 car.turnDirection = 'straight'; 
+                                 car.lane = 0;
+                            }
                         }
                     }
-                    
-                    const brakingFactor = 0.1;
-                    car.speed += (targetSpeed - car.speed) * brakingFactor;
-                    if (car.speed < 0) car.speed = 0;
-
-                    switch (car.direction) {
-                        case 'n': car.y -= car.speed; break;
-                        case 's': car.y += car.speed; break;
-                        case 'w': car.x -= car.speed; break;
-                        case 'e': car.x += car.speed; break;
+                    else if (car.direction === 's' && car.turnDirection === 'left' && hasEnteredIntersectionS) {
+                        handledByTurnLogic = true;
+                         if (car.y < turnTriggerN) {
+                            car.y += car.speed;
+                        } else {
+                            if (car.rotation < 270) {
+                                car.rotation = Math.min(270, car.rotation + turnRate);
+                            }
+                            const angleRad = (car.rotation * Math.PI) / 180;
+                            car.x += car.speed * Math.sin(angleRad) * turnSpeedFactor;
+                            car.y -= car.speed * Math.cos(angleRad) * turnSpeedFactor;
+                            if (car.rotation >= 270) {
+                                car.rotation = -90; 
+                                car.direction = 'w'; 
+                                car.turnDirection = 'straight'; 
+                                car.lane = 0;
+                            }
+                        }
                     }
+                    else if (car.direction === 'w' && car.turnDirection === 'left' && hasEnteredIntersectionW) {
+                         handledByTurnLogic = true;
+                         if (car.x > turnTriggerE) {
+                            car.x -= car.speed;
+                         } else {
+                            if (car.rotation < 0) {
+                               car.rotation = Math.min(0, car.rotation + turnRate);
+                            }
+                            const angleRad = (car.rotation * Math.PI) / 180;
+                            car.x += car.speed * Math.sin(angleRad) * turnSpeedFactor;
+                            car.y -= car.speed * Math.cos(angleRad) * turnSpeedFactor;
+                            if (car.rotation >= 0) {
+                                car.rotation = 0; 
+                                car.direction = 'n'; 
+                                car.turnDirection = 'straight'; 
+                                car.lane = 0;
+                            }
+                         }
+                    }
+                    else if (car.direction === 'e' && car.turnDirection === 'left' && hasEnteredIntersectionE) {
+                        handledByTurnLogic = true;
+                        if(car.x < turnTriggerW) {
+                            car.x += car.speed;
+                        } else {
+                            if (car.rotation < 180) {
+                                car.rotation = Math.min(180, car.rotation + turnRate);
+                            }
+                            const angleRad = (car.rotation * Math.PI) / 180;
+                            car.x += car.speed * Math.sin(angleRad) * turnSpeedFactor;
+                            car.y -= car.speed * Math.cos(angleRad) * turnSpeedFactor;
+                            if (car.rotation >= 180) {
+                                car.rotation = 180; 
+                                car.direction = 's'; 
+                                car.turnDirection = 'straight'; 
+                                car.lane = 0;
+                            }
+                        }
+                    }
+
+                    if (!handledByTurnLogic) {
+                        switch (car.direction) {
+                            case 'n': car.y -= car.speed; break;
+                            case 's': car.y += car.speed; break;
+                            case 'w': car.x -= car.speed; break;
+                            case 'e': car.x += car.speed; break;
+                        }
+                    }
+
                     car.el.style.transform = `translate(${car.x}px, ${car.y}px) rotate(${car.rotation}deg)`;
                     car.stopped = car.speed < 0.1;
                 });
@@ -478,25 +706,23 @@
                 });
             }
             
-            // --- MEDIA DETECTION LOGIC (YOLO API) ---
             function setupMediaDetection(dir, slot) {
                 const input = document.getElementById(`media-input-${dir}-${slot}`);
                 const videoPreview = document.getElementById(`video-preview-${dir}-${slot}`);
                 const imagePreview = document.getElementById(`image-preview-${dir}-${slot}`);
                 const canvas = document.getElementById(`media-canvas-${dir}-${slot}`);
                 
-                individualCounts[dir][slot] = { total: 0, ambulance: 0 };
+                if(!input) return; // Jika elemen tidak ditemukan, hentikan.
 
+                individualCounts[dir][slot] = { total: 0, ambulance: 0 };
                 input.addEventListener('change', function() {
                     const file = this.files[0];
                     if (!file) return;
                     if (detectionIntervals[dir][slot]) clearInterval(detectionIntervals[dir][slot]);
-
                     latestPredictions[dir][slot] = [];
                     const ctx = canvas.getContext('2d');
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
                     const fileURL = URL.createObjectURL(file);
-
                     if (file.type.startsWith('video/')) {
                         imagePreview.classList.add('hidden');
                         videoPreview.src = fileURL;
@@ -509,7 +735,6 @@
                         imagePreview.onload = () => detectAndDrawOnImage(imagePreview, canvas, dir, slot);
                     }
                 });
-
                 videoPreview.addEventListener('play', function() {
                     detectionIntervals[dir][slot] = setInterval(() => {
                         if (videoPreview.paused || videoPreview.ended) {
@@ -518,7 +743,6 @@
                         };
                         sendFrameToApi(videoPreview, dir, slot);
                     }, 5000); 
-
                     drawBoxesLoop(canvas, videoPreview, dir, slot);
                 });
             }
@@ -541,7 +765,6 @@
                         });
                         if (!response.ok) throw new Error(`API Error: ${response.status}`);
                         const predictions = await response.json();
-                        
                         latestPredictions[dir][slot] = predictions;
                         let ambulanceCount = 0;
                         let vehicleCount = 0;
@@ -555,7 +778,6 @@
                             }
                         });
                         individualCounts[dir][slot] = { total: vehicleCount, ambulance: ambulanceCount };
-                        
                         modelStatusEl.innerHTML = `<i class="fas fa-check-circle mr-2"></i>Berhasil terhubung ke server YOLO.`;
                         modelStatusEl.className = 'text-center text-sm text-green-600 mb-2 break-all px-4';
                     } catch (error) {
@@ -570,17 +792,14 @@
 
             function drawBoxesLoop(canvas, videoElement, dir, slot) {
                 if (videoElement.paused || videoElement.ended) return;
-                
                 const ctx = canvas.getContext('2d');
                 canvas.width = videoElement.clientWidth;
                 canvas.height = videoElement.clientHeight;
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                
                 const predictions = latestPredictions[dir][slot];
                 if (predictions && predictions.length > 0) {
                     const scaleX = canvas.width / videoElement.videoWidth;
                     const scaleY = canvas.height / videoElement.videoHeight;
-
                     predictions.forEach(prediction => {
                         if (vehicleClasses.includes(prediction.class.toLowerCase())) {
                             const isAmbulance = prediction.class.toLowerCase() === 'ambulance';
@@ -601,12 +820,10 @@
                  canvas.width = imageElement.clientWidth;
                  canvas.height = imageElement.clientHeight;
                  ctx.drawImage(imageElement, 0, 0, canvas.width, canvas.height);
-                 
                  const predictions = latestPredictions[dir][slot];
                  if (predictions && predictions.length > 0) {
                     const scaleX = canvas.width / imageElement.naturalWidth;
                     const scaleY = canvas.height / imageElement.naturalHeight;
-
                     predictions.forEach(prediction => {
                         if (vehicleClasses.includes(prediction.class.toLowerCase())) {
                             const isAmbulance = prediction.class.toLowerCase() === 'ambulance';
@@ -617,15 +834,29 @@
                             ctx.strokeRect(...scaledBbox);
                         }
                     });
-                }
+                 }
+            }
+            
+            function displayTrafficAnalysis(day, time) {
+                const trafficData = { 'Senin': { 'Pagi (07:00-09:00)': 'Sangat Padat', 'Siang (12:00-14:00)': 'Sedang', 'Sore (16:00-18:00)': 'Padat', 'Malam (19:00-21:00)': 'Rendah' }, 'Selasa': { 'Pagi (07:00-09:00)': 'Padat', 'Siang (12:00-14:00)': 'Sedang', 'Sore (16:00-18:00)': 'Padat', 'Malam (19:00-21:00)': 'Rendah' }, 'Rabu': { 'Pagi (07:00-09:00)': 'Padat', 'Siang (12:00-14:00)': 'Sedang', 'Sore (16:00-18:00)': 'Padat', 'Malam (19:00-21:00)': 'Rendah' }, 'Kamis': { 'Pagi (07:00-09:00)': 'Padat', 'Siang (12:00-14:00)': 'Sedang', 'Sore (16:00-18:00)': 'Padat', 'Malam (19:00-21:00)': 'Rendah' }, 'Jumat': { 'Pagi (07:00-09:00)': 'Sangat Padat', 'Siang (12:00-14:00)': 'Padat', 'Sore (16:00-18:00)': 'Sangat Padat', 'Malam (19:00-21:00)': 'Sedang' }, 'Sabtu': { 'Pagi (07:00-09:00)': 'Sedang', 'Siang (12:00-14:00)': 'Padat', 'Sore (16:00-18:00)': 'Padat', 'Malam (19:00-21:00)': 'Sangat Padat' }, 'Minggu': { 'Pagi (07:00-09:00)': 'Rendah', 'Siang (12:00-14:00)': 'Sedang', 'Sore (16:00-18:00)': 'Sedang', 'Malam (19:00-21:00)': 'Rendah' } };
+                const level = trafficData[day][time];
+                let colorClass = '';
+                switch(level) { case 'Rendah': colorClass = 'text-green-600'; break; case 'Sedang': colorClass = 'text-yellow-600'; break; case 'Padat': colorClass = 'text-orange-600'; break; case 'Sangat Padat': colorClass = 'text-red-600'; break; }
+                trafficResultText.innerHTML = `Prediksi untuk ${time}: <strong class="${colorClass}">${level}</strong>`;
+                const dataMapping = { 'Rendah': 1, 'Sedang': 2, 'Padat': 3, 'Sangat Padat': 4 };
+                const dayData = trafficData[day];
+                const chartData = Object.values(dayData).map(value => dataMapping[value]);
+                const chartLabels = Object.keys(dayData).map(label => label.split(' ')[0]);
+                if (trafficChart) { trafficChart.destroy(); }
+                trafficChart = new Chart(trafficChartCanvas, { type: 'line', data: { labels: chartLabels, datasets: [{ label: `Tingkat Kepadatan - ${day}`, data: chartData, borderColor: 'rgba(54, 162, 235, 1)', backgroundColor: 'rgba(54, 162, 235, 0.2)', fill: true, tension: 0.1 }] }, options: { responsive: true, plugins: { legend: { position: 'top', }, tooltip: { callbacks: { label: function(context) { let label = context.dataset.label || ''; if (label) { label += ': '; } const value = context.parsed.y; const levelText = Object.keys(dataMapping).find(key => dataMapping[key] === value); label += levelText; return label; } } } }, scales: { y: { beginAtZero: true, max: 5, ticks: { stepSize: 1, callback: function(value, index, values) { return Object.keys(dataMapping).find(key => dataMapping[key] === value) || ''; } } } } } });
+                trafficResultContainer.classList.remove('hidden');
             }
 
-            // --- SIMULATION & UI LOGIC ---
             function syncSimCarsWithDetection() {
                 const directions = ['n', 's', 'e', 'w'];
                 const slots = [1, 2, 3];
                 let totalAmbulances = 0;
-                let detectedAmbulanceDirection = null;
+                let ambulanceSourceDirection = null; 
 
                 directions.forEach(dir => {
                     let totalForDir = 0;
@@ -636,175 +867,288 @@
                         if(counts.ambulance > 0) {
                             totalAmbulances += counts.ambulance;
                             ambulanceForDir += counts.ambulance;
-                            detectedAmbulanceDirection = (dir === 'n' || dir === 's') ? 'NS' : 'WE';
+                            if (!ambulanceSourceDirection) {
+                                ambulanceSourceDirection = dir;
+                            }
                         }
                     });
-                    document.getElementById(`vehicle-count-${dir}`).textContent = totalForDir;
-
+                    
+                    if (dir === 'e') {
+                         document.getElementById(`vehicle-count-e`).textContent = totalForDir;
+                    } else if (dir === 'w') {
+                         document.getElementById(`vehicle-count-w`).textContent = totalForDir;
+                    } else if (dir === 's') {
+                        document.getElementById('vehicle-count-s').textContent = totalForDir;
+                    } else if (dir === 'n') {
+                        document.getElementById('vehicle-count-n').textContent = totalForDir;
+                    }
+                   
                     let currentCars = cars.filter(c => c.direction === dir);
                     let currentAmbulances = currentCars.filter(c => c.isEmergency).length;
-
-                    // Tambah mobil biasa
                     if(currentCars.length - currentAmbulances < totalForDir - ambulanceForDir) {
-                        createCar(dir, Math.floor(Math.random() * 3), false);
+                        createCar(dir, Math.floor(Math.random() * 4), false);
                     }
-                    // Tambah ambulans
                     if(currentAmbulances < ambulanceForDir){
-                         createCar(dir, Math.floor(Math.random() * 3), true);
+                         createCar(dir, Math.floor(Math.random() * 4), true);
                     }
                 });
 
-                if (totalAmbulances > 0 && (!emergencyOverride || emergencyOverride.direction !== detectedAmbulanceDirection)) {
-                    emergencyOverride = { direction: detectedAmbulanceDirection };
+                if (totalAmbulances > 0 && (!emergencyOverride || emergencyOverride.direction !== ambulanceSourceDirection)) {
+                    emergencyOverride = { direction: ambulanceSourceDirection };
                     emergencyStatusEl.textContent = `Terdeteksi!`;
-                    aiDecisionEl.textContent = `PRIORITAS DARURAT: Memberi jalan untuk ambulans di jalur ${detectedAmbulanceDirection}!`;
+                    let dirLabel = '';
+                    if (ambulanceSourceDirection === 's') dirLabel = 'Utara';
+                    else if (ambulanceSourceDirection === 'n') dirLabel = 'Selatan';
+                    else if (ambulanceSourceDirection === 'w') dirLabel = 'Timur';
+                    else if (ambulanceSourceDirection === 'e') dirLabel = 'Barat';
+                    aiDecisionEl.textContent = `PRIORITAS DARURAT: Memberi jalan untuk ambulans dari arah ${dirLabel}!`;
                     switchLights(true); 
                 } else if (totalAmbulances === 0 && emergencyOverride) {
                     emergencyOverride = null;
                     emergencyStatusEl.textContent = 'Aman';
                     aiDecisionEl.textContent = 'Situasi darurat selesai, kembali ke mode normal.';
-                    switchLights(); // Kembali ke siklus normal
+                    isSwitching = false;
+                    switchLights();
                 }
             }
-
+            
+            function setLightActive(dirs, activeIndices) {
+                dirs.forEach(dir => {
+                    lights[dir].forEach((light, index) => {
+                        light.classList.remove('active');
+                        if (activeIndices.includes(index)) {
+                            light.classList.add('active');
+                        }
+                    });
+                });
+            }
 
             function updateLights() {
                 if (emergencyOverride) {
-                    const isNSGreen = emergencyOverride.direction === 'NS';
-                    setLightActive(['n', 's'], isNSGreen ? 'green' : 'red');
-                    setLightActive(['w', 'e'], !isNSGreen ? 'green' : 'red');
-                    statusText.textContent = isNSGreen ? 'Prioritas U-S' : 'Prioritas B-T';
+                    const ambulanceDir = emergencyOverride.direction;
+                    // Set semua ke MERAH dulu
+                    setLightActive(['n', 's', 'w', 'e'], [0]);
+                    // Set HANYA lajur ambulans ke HIJAU
+                    if (ambulanceDir) {
+                        setLightActive([ambulanceDir], [2]);
+                    }
+                    let dirLabel = '';
+                    if (ambulanceDir === 's') dirLabel = 'Utara';
+                    else if (ambulanceDir === 'n') dirLabel = 'Selatan';
+                    else if (ambulanceDir === 'w') dirLabel = 'Timur';
+                    else if (ambulanceDir === 'e') dirLabel = 'Barat';
+                    statusText.textContent = `Prioritas ${dirLabel}`;
                     statusText.className = `text-2xl font-bold text-red-500 animate-pulse`;
                     return;
                 }
 
-                if (isSwitching) {
-                    const directionThatWasGreen = currentGreenDirection === 'NS' ? 'WE' : 'NS';
-                    setLightActive(['n', 's'], directionThatWasGreen === 'WE' ? 'yellow' : 'red');
-                    setLightActive(['w', 'e'], directionThatWasGreen === 'NS' ? 'yellow' : 'red');
-                } else if (currentGreenDirection === 'ALL_RED') {
-                    setLightActive(['n', 's', 'w', 'e'], 'red');
-                    statusText.textContent = 'Membersihkan...';
-                    statusText.className = 'text-2xl font-bold text-yellow-500';
-                } else {
-                    const isNSGreen = currentGreenDirection === 'NS';
-                    setLightActive(['n', 's'], isNSGreen ? 'green' : 'red');
-                    setLightActive(['w', 'e'], !isNSGreen ? 'green' : 'red');
-                    statusText.textContent = isNSGreen ? 'U-S Hijau' : 'B-T Hijau';
-                    statusText.className = `text-2xl font-bold ${isNSGreen ? 'text-green-600' : 'text-blue-600'}`;
+                setLightActive(['n', 's', 'w', 'e'], [0]);
+                let statusString = "Transisi...";
+                let statusColor = "text-yellow-500";
+                switch(currentPhase) {
+                    case 'E_GREEN':
+                        setLightActive(['e'], [2]);
+                        statusString = "Barat Hijau";
+                        statusColor = "text-green-600";
+                        break;
+                    case 'W_GREEN':
+                        setLightActive(['w'], [2]);
+                        statusString = "Timur Hijau";
+                        statusColor = "text-blue-600";
+                        break;
+                    case 'N_GREEN':
+                        setLightActive(['n'], [2]);
+                        statusString = "Selatan Hijau";
+                        statusColor = "text-cyan-600";
+                        break;
+                    case 'S_GREEN':
+                        setLightActive(['s'], [2]);
+                        statusString = "Utara Hijau";
+                        statusColor = "text-purple-600";
+                        break;
                 }
+                statusText.textContent = statusString;
+                statusText.className = `text-2xl font-bold ${statusColor}`;
             }
             
-            function setLightActive(dirs, color) {
-                const colorIndex = { red: 0, yellow: 1, green: 2 };
-                dirs.forEach(dir => {
-                    for(let i=0; i<3; i++) lights[dir][i].classList.remove('active');
-                    lights[dir][colorIndex[color]].classList.add('active');
-                });
-            }
-            
-            function isIntersectionClear(directionToCheck) {
-                const containerSize = container.offsetWidth;
-                const intersectionZone = {
-                    x1: containerSize / 2 - 210, x2: containerSize / 2 + 210,
-                    y1: containerSize / 2 - 210, y2: containerSize / 2 + 210,
-                };
-                for (const car of cars) {
-                    if(car.isEmergency) continue; // Abaikan ambulans saat memeriksa
-                    const carDirectionIsNS = car.direction === 'n' || car.direction === 's';
-                    const carDirectionIsWE = car.direction === 'w' || car.direction === 'e';
-                    if ((directionToCheck === 'NS' && carDirectionIsNS) || (directionToCheck === 'WE' && carDirectionIsWE)) {
-                        if (car.x > intersectionZone.x1 && car.x < intersectionZone.x2 && car.y > intersectionZone.y1 && car.y < intersectionZone.y2) {
-                            return false; 
-                        }
-                    }
-                }
-                return true; 
-            }
-
             function switchLights(isEmergencySwitch = false) {
                 if (isSwitching && !isEmergencySwitch) return;
                 
-                const YELLOW_LIGHT_DURATION = isEmergencySwitch ? 500 : 2000;
-                const directionThatWasGreen = currentGreenDirection;
+                if (greenPhaseTimer) clearTimeout(greenPhaseTimer);
+                if (intersectionClearCheckInterval) clearInterval(intersectionClearCheckInterval);
+
                 isSwitching = true;
+                const YELLOW_LIGHT_DURATION = isEmergencySwitch ? 500 : 1500;
                 
-                if (emergencyOverride) {
-                    currentGreenDirection = emergencyOverride.direction === 'NS' ? 'WE' : 'NS';
-                }
-                updateLights();
+                setLightActive(['n', 's', 'w', 'e'], [0]); 
+                statusText.textContent = "Transisi...";
+                statusText.className = `text-2xl font-bold text-gray-500`;
 
                 setTimeout(() => {
-                    currentGreenDirection = 'ALL_RED';
-                    updateLights();
+                    if (emergencyOverride) {
+                        isSwitching = false;
+                        updateLights();
+                        return;
+                    }
+                    
+                    const nextPhase = determineNextPhase(currentPhase);
+                    currentPhase = nextPhase;
+                    
+                    let nextGreenDirection = getDirectionFromPhase(currentPhase);
+                    
+                    if (nextGreenDirection) {
+                        setLightActive([nextGreenDirection], [1]);
+                    }
 
-                    let checkClearInterval = null;
-                    const failsafeTimeout = setTimeout(() => {
-                        clearInterval(checkClearInterval);
-                        proceedToNextGreen();
-                    }, 5000); 
+                    setTimeout(() => {
+                        isSwitching = false;
+                        updateLights();
+                        startGreenPhaseMonitoring(); 
 
-                    const proceedToNextGreen = () => {
-                        clearTimeout(failsafeTimeout);
-                        if (!emergencyOverride) aiDecisionEl.textContent = `Persimpangan bersih. Memberi jeda keamanan...`;
-                        
-                        setTimeout(() => {
-                            isSwitching = false;
-                            if (emergencyOverride) {
-                                updateLights();
-                                setTimeout(aiDecisionMaker, 5000); // Cek kembali status darurat setelah 5 dtk
-                                return;
-                            }
-                            const BASE_GREEN_LIGHT_DURATION = 5000;
-                            const EXTRA_GREEN_PER_CAR = 300;
-                            currentGreenDirection = (directionThatWasGreen === 'NS') ? 'WE' : 'NS';
-                            updateLights();
-                            const waitingCars = countWaitingCars(currentGreenDirection);
-                            const greenDuration = BASE_GREEN_LIGHT_DURATION + (waitingCars * EXTRA_GREEN_PER_CAR);
-                            aiDecisionEl.textContent = `Lampu hijau untuk ${currentGreenDirection} selama ${(greenDuration / 1000).toFixed(1)} dtk.`;
-                            setTimeout(aiDecisionMaker, greenDuration);
-                        }, isEmergencySwitch ? 200 : ALL_RED_PAUSE_DURATION);
-                    };
+                    }, YELLOW_LIGHT_DURATION);
 
-                    checkClearInterval = setInterval(() => {
-                        if (isIntersectionClear(directionThatWasGreen)) {
-                            clearInterval(checkClearInterval);
-                            proceedToNextGreen();
-                        }
-                    }, 100);
-                }, YELLOW_LIGHT_DURATION);
+                }, ALL_RED_PAUSE_DURATION);
             }
 
-            function aiDecisionMaker() {
-                if (isSwitching) return;
-                if(emergencyOverride) {
-                    setTimeout(aiDecisionMaker, 2000); // Jika mode darurat, cek kembali nanti
-                    return;
-                }
-                const AI_DECISION_INTERVAL = 5000;
+            function getDirectionFromPhase(phase) {
+                if (phase.startsWith('N')) return 'n';
+                if (phase.startsWith('S')) return 's';
+                if (phase.startsWith('E')) return 'e';
+                if (phase.startsWith('W')) return 'w';
+                return null;
+            }
+
+            function getPhaseFromDirection(direction) {
+                 if (direction === 'n') return 'N_GREEN';
+                 if (direction === 's') return 'S_GREEN';
+                 if (direction === 'e') return 'E_GREEN';
+                 if (direction === 'w') return 'W_GREEN';
+                 return null;
+            }
+
+            function determineNextPhase(previousPhase) {
+                let bestDirection = null;
+                let maxCars = -1; // Use -1 to handle cases where there are 0 cars
+                let decisionLog = "AI Menganalisis Antrean: ";
+                const previousDirection = getDirectionFromPhase(previousPhase);
                 
-                const nsWaiting = countWaitingCars('NS');
-                const weWaiting = countWaitingCars('WE');
-                nsCountEl.textContent = nsWaiting;
-                weCountEl.textContent = weWaiting;
+                const directions = ['s', 'n', 'w', 'e'];
 
-                const shouldSwitchToWE = currentGreenDirection === 'NS' && (weWaiting > nsWaiting + 2 || (weWaiting > 0 && nsWaiting === 0));
-                const shouldSwitchToNS = currentGreenDirection === 'WE' && (nsWaiting > weWaiting + 2 || (nsWaiting > 0 && weWaiting === 0));
+                directions.forEach(dir => {
+                    if (dir === previousDirection) return;
 
-                if (shouldSwitchToWE) {
-                    aiDecisionEl.textContent = `Kepadatan B-T (${weWaiting}) signifikan. Beralih...`;
-                    switchLights();
-                } else if (shouldSwitchToNS) {
-                    aiDecisionEl.textContent = `Kepadatan U-S (${nsWaiting}) signifikan. Beralih...`;
-                    switchLights();
-                } else {
-                    aiDecisionEl.textContent = "Mempertahankan status lampu. Arus lancar.";
-                    setTimeout(aiDecisionMaker, AI_DECISION_INTERVAL);
+                    const carCount = countWaitingCars([dir]);
+                    
+                    let dirLabel = '';
+                    if (dir === 's') dirLabel = 'Utara';
+                    if (dir === 'n') dirLabel = 'Selatan';
+                    if (dir === 'w') dirLabel = 'Timur';
+                    if (dir === 'e') dirLabel = 'Barat';
+
+                    decisionLog += `[${dirLabel}: ${carCount}] `;
+
+                    if (carCount > maxCars) {
+                        maxCars = carCount;
+                        bestDirection = dir;
+                    }
+                });
+
+                if (maxCars <= 0) {
+                    const prevIndex = phaseSequence.indexOf(previousPhase);
+                    const nextIndex = (prevIndex + 1) % phaseSequence.length;
+                    aiDecisionEl.textContent = "Tidak ada antrean, melanjutkan siklus normal.";
+                    return phaseSequence[nextIndex];
                 }
+                
+                let bestDirLabel = '';
+                if (bestDirection === 's') bestDirLabel = 'Utara';
+                if (bestDirection === 'n') bestDirLabel = 'Selatan';
+                if (bestDirection === 'w') bestDirLabel = 'Timur';
+                if (bestDirection === 'e') bestDirLabel = 'Barat';
+
+                aiDecisionEl.textContent = `${decisionLog} | Keputusan: Prioritas ke arah ${bestDirLabel} dengan ${maxCars} kendaraan.`;
+                return getPhaseFromDirection(bestDirection);
             }
 
-            function countWaitingCars(direction) {
-                return cars.filter(car => !car.isEmergency && car.stopped && ((direction === 'NS' && (car.direction === 'n' || car.direction === 's')) || (direction === 'WE' && (car.direction === 'w' || car.direction === 'e')))).length;
+            function startGreenPhaseMonitoring() {
+                if (isSwitching || emergencyOverride) return;
+
+                const currentDirection = getDirectionFromPhase(currentPhase);
+                let phaseName = '';
+                    if (currentDirection === 's') phaseName = 'Utara';
+                    if (currentDirection === 'n') phaseName = 'Selatan';
+                    if (currentDirection === 'w') phaseName = 'Timur';
+                    if (currentDirection === 'e') phaseName = 'Barat';
+
+
+                const maxGreenTimer = setTimeout(() => {
+                    aiDecisionEl.textContent = `Waktu maksimum ${phaseName} tercapai. Memulai transisi...`;
+                    if (intersectionClearCheckInterval) clearInterval(intersectionClearCheckInterval);
+                    switchLights();
+                }, MAX_GREEN_TIME);
+
+                greenPhaseTimer = setTimeout(() => {
+                    aiDecisionEl.textContent = `Waktu minimum ${phaseName} selesai. Menunggu persimpangan kosong...`;
+                    intersectionClearCheckInterval = setInterval(() => {
+                        if (checkIfIntersectionIsClear()) {
+                            clearTimeout(maxGreenTimer);
+                        }
+                    }, 500);
+                }, MINIMUM_GREEN_TIME);
+            }
+
+            function checkIfIntersectionIsClear() {
+                if (emergencyOverride) {
+                    if(intersectionClearCheckInterval) clearInterval(intersectionClearCheckInterval);
+                    return false;
+                }
+
+                const containerSize = container.offsetWidth;
+                const centerX = containerSize / 2;
+                const centerY = containerSize / 2;
+                const intersectionZone = {
+                    xMin: centerX - 350, xMax: centerX + 350,
+                    yMin: centerY - 350, yMax: centerY + 350
+                };
+
+                const greenDirection = getDirectionFromPhase(currentPhase);
+                if (!greenDirection) return true;
+
+                const isCarCrossing = cars.some(car => 
+                    car.direction === greenDirection &&
+                    !car.stopped &&
+                    car.x > intersectionZone.xMin && car.x < intersectionZone.xMax &&
+                    car.y > intersectionZone.yMin && car.y < intersectionZone.yMax
+                );
+
+                if (!isCarCrossing) {
+                    if(intersectionClearCheckInterval) clearInterval(intersectionClearCheckInterval);
+                    switchLights();
+                    return true;
+                }
+                return false;
+            }
+
+
+            function countWaitingCars(directions) {
+                const stopLines = {
+                    n: container.offsetHeight / 2 + 350, s: container.offsetHeight / 2 - 350,
+                    w: container.offsetWidth / 2 + 350, e: container.offsetWidth / 2 - 350
+                };
+                return cars.filter(car => {
+                    if (!directions.includes(car.direction) || car.isEmergency) return false;
+                    
+                    if(car.stopped) return true;
+
+                    // Hitung juga mobil yang mendekati lampu merah
+                    switch(car.direction) {
+                        case 'n': return car.y > stopLines.n && car.y < stopLines.n + 300;
+                        case 's': return car.y < stopLines.s && car.y > stopLines.s - 300;
+                        case 'w': return car.x > stopLines.w && car.x < stopLines.w + 300;
+                        case 'e': return car.x < stopLines.e && car.x > stopLines.e - 300;
+                    }
+                    return false;
+                }).length;
             }
 
             function drawCctvFeeds() {
@@ -813,25 +1157,30 @@
                     const canvas = ctx.canvas;
                     ctx.fillStyle = '#212529';
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    
                     let directionToFilter = dir;
-                    if (dir === 'n') directionToFilter = 's'; 
-                    else if (dir === 's') directionToFilter = 'n'; 
-                    else if (dir === 'e') directionToFilter = 'w';
-                    else if (dir === 'w') directionToFilter = 'e';
+                    
+                    // CCTV View Mapping to Car Direction
+                    let cctvLabel = '';
+                    if (dir === 'n') { directionToFilter = 's'; cctvLabel = 'U'; } // CCTV Utara melihat mobil dari Utara (logic 's')
+                    else if (dir === 's') { directionToFilter = 'n'; cctvLabel = 'S'; } // CCTV Selatan melihat mobil dari Selatan (logic 'n')
+                    else if (dir === 'e') { directionToFilter = 'w'; cctvLabel = 'T'; } // CCTV Timur melihat mobil dari Timur (logic 'w')
+                    else if (dir === 'w') { directionToFilter = 'e'; cctvLabel = 'B'; } // CCTV Barat melihat mobil dari Barat (logic 'e')
 
                     let detectedCount = 0;
                     cars.filter(c => c.direction === directionToFilter).forEach(car => {
                         detectedCount++;
                         let x, y, w = 12, h = 20;
-                        
                         if(dir === 'n' || dir === 's') { 
-                            let laneOffsetCctv = (car.lane === 0) ? -25 : (car.lane === 1 ? 0 : 25);
+                            let laneOffsetCctv = (car.lane - 1.5) * -20; // Disesuaikan untuk 4 lajur
                             x = canvas.width / 2 - w/2 + laneOffsetCctv;
                             y = (car.y / container.offsetHeight) * canvas.height;
                         } else {
-                            let laneOffsetCctv = (car.lane === 0) ? -25 : (car.lane === 1 ? 0 : 25);
-                            y = canvas.height / 2 - w/2 + laneOffsetCctv;
+                             let laneOffsetCctv = (car.lane - 1.5) * 12; // Disesuaikan untuk 4 lajur
+                            if (car.direction === 'e') {
+                                y = (canvas.height / 4) + laneOffsetCctv;
+                            } else {
+                                y = (canvas.height * 3 / 4) + laneOffsetCctv;
+                            }
                             x = (car.x / container.offsetWidth) * canvas.width;
                             [w,h] = [h,w];
                         }
@@ -843,25 +1192,30 @@
             }
 
             function gameLoop() {
-                const carsByDirection = {
-                    n: { 0: [], 1: [], 2: [] }, s: { 0: [], 1: [], 2: [] },
-                    e: { 0: [], 1: [], 2: [] }, w: { 0: [], 1: [], 2: [] }
-                };
+                const carsByDirection = { n: { 0: [], 1: [], 2: [], 3:[] }, s: { 0: [], 1: [], 2: [], 3:[] }, e: { 0: [], 1: [], 2: [], 3:[] }, w: { 0: [], 1: [], 2: [], 3:[] } };
                 for (const car of cars) {
-                    carsByDirection[car.direction][car.lane].push(car);
+                    if (carsByDirection[car.direction] && carsByDirection[car.direction][car.lane] !== undefined) {
+                        carsByDirection[car.direction][car.lane].push(car);
+                    }
                 }
                 for (const dir in carsByDirection) {
                     for (const lane in carsByDirection[dir]) {
                         const laneCars = carsByDirection[dir][lane];
                         if (dir === 's' || dir === 'e') {
                             laneCars.sort((a, b) => (dir === 's' ? a.y - b.y : a.x - b.x));
-                        } else { // n, w
+                        } else {
                             laneCars.sort((a, b) => (dir === 'n' ? b.y - a.y : b.x - a.x));
                         }
                     }
                 }
-
                 moveCars(carsByDirection);
+                
+                // Update individual queue counts on the dashboard
+                utaraCountEl.textContent = countWaitingCars(['s']);   // Visual Utara is logic 's'
+                selatanCountEl.textContent = countWaitingCars(['n']); // Visual Selatan is logic 'n'
+                timurCountEl.textContent = countWaitingCars(['w']);   // Visual Timur is logic 'w'
+                baratCountEl.textContent = countWaitingCars(['e']);   // Visual Barat is logic 'e'
+
                 drawCctvFeeds();
                 requestAnimationFrame(gameLoop);
             }
@@ -871,31 +1225,31 @@
                 zoomDisplay.textContent = `${Math.round(zoomLevel * 100)}%`;
             }
 
-            // --- INITIALIZATION ---
+            function getCurrentTimeInfo() {
+                const now = new Date();
+                const dayIndex = now.getDay();
+                const hour = now.getHours();
+                const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+                const currentDay = days[dayIndex];
+                let currentTimeSlot = 'Pagi (07:00-09:00)';
+                if (hour >= 7 && hour < 10) { currentTimeSlot = 'Pagi (07:00-09:00)'; } else if (hour >= 12 && hour < 15) { currentTimeSlot = 'Siang (12:00-14:00)'; } else if (hour >= 16 && hour < 19) { currentTimeSlot = 'Sore (16:00-18:00)'; } else if (hour >= 19 && hour < 22) { currentTimeSlot = 'Malam (19:00-21:00)'; } else if (hour < 7) { currentTimeSlot = 'Malam (19:00-21:00)'; }
+                return { day: currentDay, time: currentTimeSlot };
+            }
+
             function init() {
                 const directions = ['n', 's', 'e', 'w'];
-                const slots = [1, 2, 3];
-
-                directions.forEach(dir => {
-                    slots.forEach(slot => {
-                        setupMediaDetection(dir, slot);
-                    });
-                });
-                
+                const slots = [1, 2, 3]; // Diubah dari 4 menjadi 3
+                directions.forEach(dir => { slots.forEach(slot => { setupMediaDetection(dir, slot); }); });
                 setInterval(syncSimCarsWithDetection, 2000); 
-                
-                geminiBtn.addEventListener('click', getGeminiPrediction);
-                
-                zoomInBtn.addEventListener('click', () => {
-                    zoomLevel = Math.min(1.5, zoomLevel + 0.1); 
-                    updateZoom();
-                });
-
-                zoomOutBtn.addEventListener('click', () => {
-                    zoomLevel = Math.max(0.2, zoomLevel - 0.1); 
-                    updateZoom();
-                });
-
+                analyzeTrafficBtn.addEventListener('click', () => { const day = daySelect.value; const time = timeSelect.value; displayTrafficAnalysis(day, time); });
+                daySelect.addEventListener('change', () => displayTrafficAnalysis(daySelect.value, timeSelect.value));
+                timeSelect.addEventListener('change', () => displayTrafficAnalysis(daySelect.value, timeSelect.value));
+                const { day: currentDay, time: currentTime } = getCurrentTimeInfo();
+                daySelect.value = currentDay;
+                timeSelect.value = currentTime;
+                displayTrafficAnalysis(currentDay, currentTime);
+                zoomInBtn.addEventListener('click', () => { zoomLevel = Math.min(1.5, zoomLevel + 0.1); updateZoom(); });
+                zoomOutBtn.addEventListener('click', () => { zoomLevel = Math.max(0.2, zoomLevel - 0.1); updateZoom(); });
                 testConnectionBtn.addEventListener('click', async () => {
                     const baseUrl = YOLO_API_ENDPOINT.replace('/api/detect', '');
                     modelStatusEl.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Menghubungi server...`;
@@ -906,60 +1260,22 @@
                             const text = await response.text();
                             modelStatusEl.innerHTML = `<i class="fas fa-check-circle mr-2"></i>Berhasil! Server merespon: "${text}"`;
                             modelStatusEl.className = 'text-center text-sm text-green-600 mb-2 break-all px-4';
-                        } else {
-                            throw new Error(`Server merespon dengan status ${response.status}`);
-                        }
+                        } else { throw new Error(`Server merespon dengan status ${response.status}`); }
                     } catch (error) {
                         console.error('Test Connection Error:', error);
                         modelStatusEl.innerHTML = `<i class="fas fa-exclamation-triangle mr-2"></i>Koneksi Gagal! Pastikan server di Colab berjalan dan URL sudah benar.`;
                         modelStatusEl.className = 'text-center text-sm text-red-600 mb-2 break-all px-4';
                     }
                 });
-
                 updateZoom();
                 gameLoop();
                 updateLights();
-                const BASE_GREEN_LIGHT_DURATION = 5000;
-                setTimeout(aiDecisionMaker, BASE_GREEN_LIGHT_DURATION);
+                startGreenPhaseMonitoring(); // Mulai siklus AI pertama
             }
             
-            async function getGeminiPrediction() {
-                geminiBtn.disabled = true;
-                geminiBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Menganalisis...';
-                geminiResultContainer.classList.remove('hidden');
-                geminiResultText.textContent = 'Menghubungi AI Gemini untuk analisis...';
-
-                const nsWaiting = countWaitingCars('NS');
-                const weWaiting = countWaitingCars('WE');
-                const prompt = `Anda adalah AI analisis lalu lintas untuk Bandung pada ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}. Terdapat ${nsWaiting} mobil menunggu di arah Utara-Selatan dan ${weWaiting} mobil di arah Barat-Timur. Berikan prediksi singkat (1 kalimat) untuk tren 15 menit ke depan dan satu rekomendasi (1 kalimat). Jawab dalam Bahasa Indonesia.`;
-
-                try {
-                    let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
-                    const payload = { contents: chatHistory };
-                    const apiKey = ""; // API key will be injected by the environment
-                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-                    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                    if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
-                    const result = await response.json();
-                    if (result.candidates && result.candidates[0]?.content?.parts?.[0]) {
-                        const text = result.candidates[0].content.parts[0].text;
-                        geminiResultText.innerHTML = `<strong>Analisis AI:</strong> ${text}`;
-                    } else { throw new Error('Invalid response structure from API.'); }
-                } catch (error) {
-                    console.error("Gemini API Error:", error);
-                    geminiResultText.textContent = 'Gagal mendapatkan analisis dari AI.';
-                } finally {
-                    geminiBtn.disabled = false;
-                    geminiBtn.innerHTML = '<i class="fas fa-star mr-2"></i>Dapatkan Analisis Prediktif';
-                }
-            }
-
             init();
         });
     </script>
 </body>
 </html>
-
-
-
 
