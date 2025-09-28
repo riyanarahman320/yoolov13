@@ -49,7 +49,7 @@
 
         /* Penyesuaian Posisi Garis Utara & Selatan */
         .center-divider.divider-v.top {
-            left: calc(50% + 5px); 
+            left: calc(50% + 10px); /* Digeser sedikit ke kanan */
         }
         .center-divider.divider-v.bottom {
             left: calc(50% - 2.5px);
@@ -155,19 +155,7 @@
         }
         .cctv-overlay .rec { color: #dc3545; margin-right: 4px; animation: blink-rec 1.5s infinite; }
         @keyframes blink-rec { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .media-input-label {
-            cursor: pointer;
-            padding: 6px 10px;
-            background-color: #4a90e2;
-            color: white;
-            border-radius: 5px;
-            display: inline-block;
-            text-align: center;
-            font-size: 12px;
-            margin-top: 4px;
-        }
-        .media-input-label:hover { background-color: #357abd; }
-        .media-input { display: none; }
+        
         .media-preview-container {
             width: 100%;
             aspect-ratio: 16 / 9;
@@ -263,7 +251,7 @@
                 <!-- Vehicle Counting Section -->
                 <div class="w-full p-5 bg-white rounded-xl shadow-lg">
                     <div class="flex justify-between items-center mb-3">
-                        <h2 class="text-xl font-bold text-center text-gray-700">Hitung Kendaraan</h2>
+                        <h2 class="text-xl font-bold text-center text-gray-700">Hitung Kendaraan dari CCTV</h2>
                         <button id="test-connection-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold py-1 px-3 rounded-lg">Tes Koneksi</button>
                     </div>
                     <p id="model-status" class="text-center text-sm text-gray-500 mb-2 break-all px-4"><i class="fas fa-server"></i> Server: `URL_ANDA`</p>
@@ -275,15 +263,15 @@
                             <div class="grid grid-cols-3 gap-3"> <!-- Diubah menjadi 3 kolom -->
                                 <div class="text-center">
                                     <div class="media-preview-container"><video id="video-preview-s-1" loop muted playsinline class="hidden"></video><img id="image-preview-s-1" class="hidden" /><canvas id="media-canvas-s-1"></canvas></div>
-                                    <label for="media-input-s-1" class="media-input-label">Titik 1</label><input type="file" id="media-input-s-1" accept="video/*,image/*" class="media-input" />
+                                    <p class="mt-2 text-sm font-medium text-gray-600">CCTV Titik 1</p>
                                 </div>
                                 <div class="text-center">
                                     <div class="media-preview-container"><video id="video-preview-s-2" loop muted playsinline class="hidden"></video><img id="image-preview-s-2" class="hidden" /><canvas id="media-canvas-s-2"></canvas></div>
-                                    <label for="media-input-s-2" class="media-input-label">Titik 2</label><input type="file" id="media-input-s-2" accept="video/*,image/*" class="media-input" />
+                                    <p class="mt-2 text-sm font-medium text-gray-600">CCTV Titik 2</p>
                                 </div>
                                 <div class="text-center">
                                     <div class="media-preview-container"><video id="video-preview-s-3" loop muted playsinline class="hidden"></video><img id="image-preview-s-3" class="hidden" /><canvas id="media-canvas-s-3"></canvas></div>
-                                    <label for="media-input-s-3" class="media-input-label">Titik 3</label><input type="file" id="media-input-s-3" accept="video/*,image/*" class="media-input" />
+                                    <p class="mt-2 text-sm font-medium text-gray-600">CCTV Titik 3</p>
                                 </div>
                             </div>
                         </div>
@@ -294,15 +282,15 @@
                             <div class="grid grid-cols-3 gap-3"> <!-- Diubah menjadi 3 kolom -->
                                 <div class="text-center">
                                     <div class="media-preview-container"><video id="video-preview-n-1" loop muted playsinline class="hidden"></video><img id="image-preview-n-1" class="hidden" /><canvas id="media-canvas-n-1"></canvas></div>
-                                    <label for="media-input-n-1" class="media-input-label">Titik 1</label><input type="file" id="media-input-n-1" accept="video/*,image/*" class="media-input" />
+                                    <p class="mt-2 text-sm font-medium text-gray-600">CCTV Titik 1</p>
                                 </div>
                                 <div class="text-center">
                                     <div class="media-preview-container"><video id="video-preview-n-2" loop muted playsinline class="hidden"></video><img id="image-preview-n-2" class="hidden" /><canvas id="media-canvas-n-2"></canvas></div>
-                                    <label for="media-input-n-2" class="media-input-label">Titik 2</label><input type="file" id="media-input-n-2" accept="video/*,image/*" class="media-input" />
+                                     <p class="mt-2 text-sm font-medium text-gray-600">CCTV Titik 2</p>
                                 </div>
                                 <div class="text-center">
                                     <div class="media-preview-container"><video id="video-preview-n-3" loop muted playsinline class="hidden"></video><img id="image-preview-n-3" class="hidden" /><canvas id="media-canvas-n-3"></canvas></div>
-                                    <label for="media-input-n-3" class="media-input-label">Titik 3</label><input type="file" id="media-input-n-3" accept="video/*,image/*" class="media-input" />
+                                     <p class="mt-2 text-sm font-medium text-gray-600">CCTV Titik 3</p>
                                 </div>
                             </div>
                         </div>
@@ -313,15 +301,15 @@
                             <div class="grid grid-cols-3 gap-3">
                                <div class="text-center">
                                     <div class="media-preview-container"><video id="video-preview-w-1" loop muted playsinline class="hidden"></video><img id="image-preview-w-1" class="hidden" /><canvas id="media-canvas-w-1"></canvas></div>
-                                    <label for="media-input-w-1" class="media-input-label">Titik 1</label><input type="file" id="media-input-w-1" accept="video/*,image/*" class="media-input" />
+                                    <p class="mt-2 text-sm font-medium text-gray-600">CCTV Titik 1</p>
                                 </div>
                                 <div class="text-center">
                                     <div class="media-preview-container"><video id="video-preview-w-2" loop muted playsinline class="hidden"></video><img id="image-preview-w-2" class="hidden" /><canvas id="media-canvas-w-2"></canvas></div>
-                                    <label for="media-input-w-2" class="media-input-label">Titik 2</label><input type="file" id="media-input-w-2" accept="video/*,image/*" class="media-input" />
+                                    <p class="mt-2 text-sm font-medium text-gray-600">CCTV Titik 2</p>
                                 </div>
                                 <div class="text-center">
                                     <div class="media-preview-container"><video id="video-preview-w-3" loop muted playsinline class="hidden"></video><img id="image-preview-w-3" class="hidden" /><canvas id="media-canvas-w-3"></canvas></div>
-                                    <label for="media-input-w-3" class="media-input-label">Titik 3</label><input type="file" id="media-input-w-3" accept="video/*,image/*" class="media-input" />
+                                    <p class="mt-2 text-sm font-medium text-gray-600">CCTV Titik 3</p>
                                 </div>
                             </div>
                         </div>
@@ -332,15 +320,15 @@
                             <div class="grid grid-cols-3 gap-3">
                                 <div class="text-center">
                                     <div class="media-preview-container"><video id="video-preview-e-1" loop muted playsinline class="hidden"></video><img id="image-preview-e-1" class="hidden" /><canvas id="media-canvas-e-1"></canvas></div>
-                                    <label for="media-input-e-1" class="media-input-label">Titik 1</label><input type="file" id="media-input-e-1" accept="video/*,image/*" class="media-input" />
+                                    <p class="mt-2 text-sm font-medium text-gray-600">CCTV Titik 1</p>
                                 </div>
                                 <div class="text-center">
                                     <div class="media-preview-container"><video id="video-preview-e-2" loop muted playsinline class="hidden"></video><img id="image-preview-e-2" class="hidden" /><canvas id="media-canvas-e-2"></canvas></div>
-                                    <label for="media-input-e-2" class="media-input-label">Titik 2</label><input type="file" id="media-input-e-2" accept="video/*,image/*" class="media-input" />
+                                    <p class="mt-2 text-sm font-medium text-gray-600">CCTV Titik 2</p>
                                 </div>
                                 <div class="text-center">
                                     <div class="media-preview-container"><video id="video-preview-e-3" loop muted playsinline class="hidden"></video><img id="image-preview-e-3" class="hidden" /><canvas id="media-canvas-e-3"></canvas></div>
-                                    <label for="media-input-e-3" class="media-input-label">Titik 3</label><input type="file" id="media-input-e-3" accept="video/*,image/*" class="media-input" />
+                                    <p class="mt-2 text-sm font-medium text-gray-600">CCTV Titik 3</p>
                                 </div>
                             </div>
                         </div>
@@ -399,11 +387,37 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // --- KONFIGURASI VIDEO ---
+            // Ganti URL placeholder ini dengan URL video Anda yang sudah di-hosting.
+            // Saya menggunakan video placeholder yang sama untuk semua slot sebagai contoh.
+            const predefinedVideos = {
+                s: { // Arah Utara
+                    1: 'https://raw.githubusercontent.com/riyanarahman320/video_simulasi/main/video_utara.mp4',
+                    2: '',
+                    3: ''
+                },
+                n: { // Arah Selatan
+                    1: 'https://raw.githubusercontent.com/riyanarahman320/video_simulasi/main/video_utara.mp4',
+                    2: '',
+                    3: ''
+                },
+                w: { // Arah Timur
+                    1: 'https://raw.githubusercontent.com/riyanarahman320/video_simulasi/main/video_buatgithubambulan.mp4',
+                    2: '',
+                    3: ''
+                },
+                e: { // Arah Barat
+                    1: 'https://raw.githubusercontent.com/riyanarahman320/video_simulasi/main/video_utara.mp4',
+                    2: '',
+                    3: ''
+                }
+            };
+
             // --- CONFIGURATION ---
             const MAX_SPEED = 2.0;
-            const SAFE_DISTANCE = 90; 
-            const YOLO_API_ENDPOINT = 'https://lochlan-inconsecutively-inviolately.ngrok-free.dev/api/detect';
-            const ALL_RED_PAUSE_DURATION = 3500; // Jeda keamanan diperpanjang menjadi 3.5 detik
+            const SAFE_DISTANCE = 100; 
+            const YOLO_API_ENDPOINT = 'https://unsparked-ignacio-warmheartedly.ngrok-free.dev/api/detect';
+            // PERBAIKAN: Menghapus durasi jeda merah tetap, karena sekarang dinamis.
 
             // --- DOM ELEMENTS ---
             const container = document.getElementById('simulation-container');
@@ -589,12 +603,12 @@
                     if (car.speed < 0.01) car.speed = 0;
 
                     let handledByTurnLogic = false;
-                    const turnRate = 2.5; 
+                    const turnRate = 2.2; 
                     const turnSpeedFactor = 1.0;
                     
                     const intersectionBoundary = 350;
-                    const wideTurnMargin = 320; // Dibuat lebih lebar lagi
-                    const extraWideTurnMargin = 340; // Dibuat sangat lebar
+                    const wideTurnMargin = 300; 
+                    const extraWideTurnMargin = 320;
                     
                     const turnTriggerS = centerY + intersectionBoundary - wideTurnMargin;
                     const turnTriggerN = centerY - intersectionBoundary + extraWideTurnMargin;
@@ -707,34 +721,30 @@
             }
             
             function setupMediaDetection(dir, slot) {
-                const input = document.getElementById(`media-input-${dir}-${slot}`);
                 const videoPreview = document.getElementById(`video-preview-${dir}-${slot}`);
-                const imagePreview = document.getElementById(`image-preview-${dir}-${slot}`);
                 const canvas = document.getElementById(`media-canvas-${dir}-${slot}`);
                 
-                if(!input) return; // Jika elemen tidak ditemukan, hentikan.
+                if(!videoPreview) return; // Hentikan jika elemen video tidak ada
 
                 individualCounts[dir][slot] = { total: 0, ambulance: 0 };
-                input.addEventListener('change', function() {
-                    const file = this.files[0];
-                    if (!file) return;
-                    if (detectionIntervals[dir][slot]) clearInterval(detectionIntervals[dir][slot]);
-                    latestPredictions[dir][slot] = [];
-                    const ctx = canvas.getContext('2d');
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    const fileURL = URL.createObjectURL(file);
-                    if (file.type.startsWith('video/')) {
-                        imagePreview.classList.add('hidden');
-                        videoPreview.src = fileURL;
-                        videoPreview.classList.remove('hidden');
-                        videoPreview.play().catch(e => console.error("Video play failed:", e));
-                    } else {
-                        videoPreview.classList.add('hidden');
-                        imagePreview.src = fileURL;
-                        imagePreview.classList.remove('hidden');
-                        imagePreview.onload = () => detectAndDrawOnImage(imagePreview, canvas, dir, slot);
-                    }
+                
+                // Ambil URL dari objek predefinedVideos
+                const videoUrl = predefinedVideos[dir]?.[slot];
+                if (!videoUrl) {
+                    console.warn(`Tidak ada video untuk arah ${dir}, slot ${slot}`);
+                    return;
+                }
+
+                videoPreview.src = videoUrl;
+                videoPreview.crossOrigin = "anonymous"; // Penting jika video di-host di domain lain
+                videoPreview.classList.remove('hidden');
+
+                // Coba putar video saat sudah siap
+                videoPreview.addEventListener('canplay', () => {
+                    videoPreview.play().catch(e => console.error(`Gagal memutar video [${dir}-${slot}]:`, e));
                 });
+                
+                // Mulai deteksi saat video diputar
                 videoPreview.addEventListener('play', function() {
                     detectionIntervals[dir][slot] = setInterval(() => {
                         if (videoPreview.paused || videoPreview.ended) {
@@ -742,7 +752,7 @@
                             return;
                         };
                         sendFrameToApi(videoPreview, dir, slot);
-                    }, 5000); 
+                    }, 3500);
                     drawBoxesLoop(canvas, videoPreview, dir, slot);
                 });
             }
@@ -882,7 +892,7 @@
                     } else if (dir === 'n') {
                         document.getElementById('vehicle-count-n').textContent = totalForDir;
                     }
-                   
+                    
                     let currentCars = cars.filter(c => c.direction === dir);
                     let currentAmbulances = currentCars.filter(c => c.isEmergency).length;
                     if(currentCars.length - currentAmbulances < totalForDir - ambulanceForDir) {
@@ -971,43 +981,81 @@
                 statusText.className = `text-2xl font-bold ${statusColor}`;
             }
             
+            // PERBAIKAN: Logika pergantian lampu dirombak total untuk memastikan persimpangan kosong.
             function switchLights(isEmergencySwitch = false) {
                 if (isSwitching && !isEmergencySwitch) return;
-                
+
+                // 1. Hentikan semua timer fase hijau yang sedang berjalan
                 if (greenPhaseTimer) clearTimeout(greenPhaseTimer);
                 if (intersectionClearCheckInterval) clearInterval(intersectionClearCheckInterval);
-
                 isSwitching = true;
-                const YELLOW_LIGHT_DURATION = isEmergencySwitch ? 500 : 1500;
-                
-                setLightActive(['n', 's', 'w', 'e'], [0]); 
-                statusText.textContent = "Transisi...";
-                statusText.className = `text-2xl font-bold text-gray-500`;
 
-                setTimeout(() => {
-                    if (emergencyOverride) {
-                        isSwitching = false;
-                        updateLights();
-                        return;
-                    }
-                    
-                    const nextPhase = determineNextPhase(currentPhase);
-                    currentPhase = nextPhase;
-                    
-                    let nextGreenDirection = getDirectionFromPhase(currentPhase);
-                    
-                    if (nextGreenDirection) {
-                        setLightActive([nextGreenDirection], [1]);
-                    }
+                const YELLOW_LIGHT_DURATION = 1500;
+                const previousDirection = getDirectionFromPhase(currentPhase);
 
+                // Logika darurat ditangani secara terpisah untuk respons cepat
+                if (isEmergencySwitch) {
+                    setLightActive(['n', 's', 'w', 'e'], [0]); // Semua langsung merah
                     setTimeout(() => {
                         isSwitching = false;
-                        updateLights();
-                        startGreenPhaseMonitoring(); 
+                        updateLights(); // Fungsi updateLights akan memberi hijau ke jalur darurat
+                    }, 500); // Jeda singkat untuk keamanan
+                    return;
+                }
 
-                    }, YELLOW_LIGHT_DURATION);
+                // 2. Ubah lampu hijau sebelumnya menjadi kuning
+                if (previousDirection) {
+                    setLightActive([previousDirection], [1]);
+                }
 
-                }, ALL_RED_PAUSE_DURATION);
+                // 3. Setelah durasi kuning, ubah semua lampu menjadi merah dan mulai pengecekan
+                setTimeout(() => {
+                    setLightActive(['n', 's', 'w', 'e'], [0]); // Semua lampu merah
+                    statusText.textContent = "Mengosongkan...";
+                    statusText.className = `text-2xl font-bold text-yellow-500`;
+
+                    // 4. Mulai interval untuk memeriksa apakah persimpangan sudah benar-benar kosong
+                    const clearanceCheck = setInterval(() => {
+                        if (isIntersectionCompletelyClear()) {
+                            clearInterval(clearanceCheck); // Hentikan pengecekan
+
+                            // 5. Persimpangan kosong, lanjutkan ke fase berikutnya
+                            // Periksa lagi jika ada kasus darurat yang masuk saat transisi
+                            if (emergencyOverride) {
+                                isSwitching = false;
+                                updateLights();
+                                return;
+                            }
+
+                            const nextPhase = determineNextPhase(currentPhase);
+                            currentPhase = nextPhase;
+                            
+                            isSwitching = false;
+                            updateLights(); // Ini akan menyalakan lampu hijau yang baru
+                            startGreenPhaseMonitoring();
+                        }
+                    }, 100); // Periksa setiap 100 milidetik
+
+                }, YELLOW_LIGHT_DURATION);
+            }
+
+            // PERBAIKAN: Fungsi baru untuk memeriksa apakah ADA mobil APAPUN di tengah persimpangan
+            function isIntersectionCompletelyClear() {
+                const containerSize = container.offsetWidth;
+                const centerX = containerSize / 2;
+                const centerY = containerSize / 2;
+                const intersectionZone = {
+                    xMin: centerX - 350, xMax: centerX + 350,
+                    yMin: centerY - 350, yMax: centerY + 350
+                };
+
+                // Mengembalikan true jika TIDAK ADA pusat mobil yang berada di dalam zona persimpangan
+                return !cars.some(car => {
+                    const carCenterX = car.x + car.el.offsetWidth / 2;
+                    const carCenterY = car.y + car.el.offsetHeight / 2;
+                    return carCenterX > intersectionZone.xMin && carCenterX < intersectionZone.xMax &&
+                           carCenterY > intersectionZone.yMin && carCenterY < intersectionZone.yMax;
+                });
             }
 
             function getDirectionFromPhase(phase) {
@@ -1075,10 +1123,10 @@
 
                 const currentDirection = getDirectionFromPhase(currentPhase);
                 let phaseName = '';
-                    if (currentDirection === 's') phaseName = 'Utara';
-                    if (currentDirection === 'n') phaseName = 'Selatan';
-                    if (currentDirection === 'w') phaseName = 'Timur';
-                    if (currentDirection === 'e') phaseName = 'Barat';
+                       if (currentDirection === 's') phaseName = 'Utara';
+                       if (currentDirection === 'n') phaseName = 'Selatan';
+                       if (currentDirection === 'w') phaseName = 'Timur';
+                       if (currentDirection === 'e') phaseName = 'Barat';
 
 
                 const maxGreenTimer = setTimeout(() => {
